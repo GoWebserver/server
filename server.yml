@@ -1,14 +1,64 @@
-Database:
-  Host: '127.0.0.1'
-  Port: 9044
-  User: 'root'
-  Password: 'root'
-  Database: 'server'
+# change to serve root for serving files
+# can be relative to the server main.go
+# or absolute
+#
+# only this directory is served, but no underlying directory
+# get served
+#
+# default: ./site
+SitesDir: './site'
 
+# PortHTTPS for the website must be between 0 and 65536
+# this comes from the Dockerfile and should
+# not get changed via the config file if used with Docker,
+# as it gets overridden with the environment variables
+#
+# default: 8443
+PortHTTPS: 8443
+
+# ApiPort used for the api must be between 0 and 65536
+# should be different from Port to avoid trying to serve
+# api by server
+#
+# default: 18266
+ApiPort: 18266
+
+# removes Debug logs from console if set to true
+# disabling improves cache loading and serving speed
+#
+# default: false
 Debug: true
 
-Logging:
-  LogPrefix: true
-  LogFile: true
-  StretchPrefix: 9
-  StretchFile: 18
+# Configuration for Database connection
+#
+# see DB
+Database:
+  # Hosts of DB to connect to as an array.
+  # Database to store logs, access logs, etc.
+  #
+  # default: []string{"no host provided"}
+  Host: [ '127.0.0.1' ]
+
+  # Port of DB to connect to.
+  # Database to store logs, access logs, etc.
+  #
+  # default: 0
+  Port: 9044
+
+  # User of DB to connect to.
+  # Database to store logs, access logs, etc.
+  #
+  # default: "no user provided"
+  User: 'root'
+
+  # Password of User to connect to.
+  # Database to store logs, access logs, etc.
+  #
+  # default: "no password provided"
+  Password: 'root'
+
+  # Keyspace of DB to use.
+  # Database to store logs, access logs, etc.
+  #
+  # default: "no keyspace provided"
+  Keyspace: 'server'
