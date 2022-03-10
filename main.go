@@ -18,12 +18,12 @@ func main() {
 	log.Log("Loaded config:", fmt.Sprintf("%+v", src.GetConfig()))
 
 	log.Log("Starting server")
-	// log.DBInit()
+	src.DBInit()
 
-	// err := serve.LoadSites()
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err := serve.LoadSites()
+	if err != nil {
+		panic(err)
+	}
 
 	serv := serve.CreateServe()
 
