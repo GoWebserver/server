@@ -1,14 +1,14 @@
 version: '3'
 
 services:
-  server-db:
-    image: scylladb/scylla:4.5.3
+  db:
+    image: scylladb/scylla:4.5.4
     restart: always
     ports:
       - "9042:9042"
     volumes:
       - ./scylla.yaml:/etc/scylla/scylla.yaml
       - db-data:/var/lib/scylla
-      
+
 volumes:
   db-data:
