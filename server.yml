@@ -37,7 +37,7 @@ Database:
   # Database to store logs, access logs, etc.
   #
   # default: []string{"no host provided"}
-  Host: [ '127.0.0.1' ]
+  Hosts: [ '127.0.0.1' ]
 
   # Port of DB to connect to.
   # Database to store logs, access logs, etc.

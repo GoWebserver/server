@@ -4,6 +4,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2"
 
+	"server/src/config"
 	"server/src/log"
 )
 
@@ -13,12 +14,12 @@ var logsession *gocql.Session
 
 // DBInit Create and open DB Connection
 func DBInit() {
-	cluster = gocql.NewCluster(GetConfig().Database.Host)
-	cluster.Port = int(GetConfig().Database.Port)
-	cluster.Keyspace = GetConfig().Database.Database
+	cluster = gocql.NewCluster(config.GetConfig().Database.Hosts...)
+	cluster.Port = int(config.GetConfig().Database.Port)
+	cluster.Keyspace = config.GetConfig().Database.Keyspace
 	cluster.Authenticator = gocql.PasswordAuthenticator{
-		Username: GetConfig().Database.User,
-		Password: GetConfig().Database.Password,
+		Username: config.GetConfig().Database.User,
+		Password: config.GetConfig().Database.Password,
 	}
 	var err error
 	GQLSession, err = gocqlx.WrapSession(cluster.CreateSession())
