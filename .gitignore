@@ -1,2 +1,5 @@
 /.idea
 /mime/out.sql
+
+/certs/cert.pem
+/certs/key.key

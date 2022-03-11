@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	lg "log"
 	"net/http"
 
 	// graph "server/graphql"
@@ -21,16 +22,17 @@ func main() {
 	log.Log("Starting server")
 	src.DBInit()
 
+	srv.LoadMime()
 	err := srv.LoadSites()
 	if err != nil {
 		panic(err)
 	}
 
-	// serv := srv.CreateServe()
+	serv := srv.CreateServe()
 
-	// webServer := &http.Server{Addr: ":" + fmt.Sprintf("%d", config.GetConfig().PortHTTPS), Handler: serv}
-	// webServer.ErrorLog = lg.New(&log.LogWriter{}, "", 0)
-	// go startWebServer(webServer)
+	webServer := &http.Server{Addr: ":" + fmt.Sprintf("%d", config.GetConfig().PortHTTPS), Handler: serv}
+	webServer.ErrorLog = lg.New(&log.LogWriter{}, "", 0)
+	startWebServer(webServer)
 
 	// http.HandleFunc("/", graph.GetPlayground)
 	// http.Handle("/query", handler.NewDefaultServer(gen.NewExecutableSchema(gen.Config{Resolvers: graph.GenResolver()})))
