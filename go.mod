@@ -1,6 +1,6 @@
 module server
 
-go 1.17
+go 1.18
 
 require (
 	github.com/gocql/gocql v0.0.0-20220215161543-dbb3730926ea
