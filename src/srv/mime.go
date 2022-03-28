@@ -1,30 +1,24 @@
 package srv
 
 import (
-	"regexp"
 	"time"
 
-	"server/src"
 	"server/src/log"
+	"server/src/settings"
 )
 
-var mimeTypes map[*regexp.Regexp]string
-
-func LoadMime() {
-	now := time.Now()
-	types := src.GetMimeTypes()
-	mimeTypes = make(map[*regexp.Regexp]string, len(types))
-	for ext, typ := range types {
-		mimeTypes[regexp.MustCompile(ext)] = typ
-	}
-	log.Log("Loaded Mime Types in", time.Since(now))
-}
-
 func getMime(filename string) (string, bool) {
-	for r, s := range mimeTypes {
-		if r.Match([]byte(filename)) {
-			return s, true
+	start := time.Now()
+	index := 0
+	for _, s := range settings.GetSettings().Mimetypes.Data {
+		if s.Regex.Match([]byte(filename)) {
+			log.Debug(float32(time.Since(start).Microseconds()))
+			log.Debug(index)
+			return s.Type, true
 		}
+		index++
 	}
+	log.Debug(float32(time.Since(start).Microseconds()))
+	log.Debug("dead")
 	return "", false
 }

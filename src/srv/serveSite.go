@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"server/src/config"
 	"server/src/log"
+	"server/src/settings"
 )
 
 func getSite(path string, host string) (*[]byte, int, error) {
@@ -61,10 +61,12 @@ func CreateServe() http.HandlerFunc {
 	fun := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		if r.URL.Path == "/" {
-			r.URL.Path = config.GetSettings().DefaultSite
+			r.URL.Path = settings.GetSettings().DefaultSite.Data
 		}
 
 		msg, code, err := getSite(r.URL.Path, r.Host)
+
+		searchTime := time.Now()
 
 		if err != nil {
 			log.Err(err, fmt.Sprintf("Error getting site %s", r.URL.Path))
@@ -78,7 +80,7 @@ func CreateServe() http.HandlerFunc {
 				log.Log("unknown MimeType", filetype)
 			}
 		}
-		searchTime := time.Now()
+
 		_, er := w.Write(*msg)
 		if er != nil {
 			log.Err(er, "Error writing response:")

@@ -10,6 +10,7 @@ import (
 
 	"server/src/config"
 	"server/src/log"
+	"server/src/settings"
 	"server/src/srv"
 
 	"server/src"
@@ -19,12 +20,12 @@ func main() {
 	config.LoadConfig()
 	log.Log("Loaded config:", fmt.Sprintf("%+v", config.GetConfig()))
 
-	config.LoadSettings()
+	settings.LoadDefaultSettings()
 
 	log.Log("Starting server")
 	src.DBInit()
 
-	srv.LoadMime()
+	settings.LoadMime()
 	err := srv.LoadSites()
 	if err != nil {
 		panic(err)

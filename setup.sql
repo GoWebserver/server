@@ -36,8 +36,10 @@ create table apiaccess
 
 create table mime
 (
-    extension text primary key,
-    mimetype  text
+    extension text,
+    mimetype  text,
+    "index"   int primary key
+
 )
     with caching = {'keys': 'ALL', 'rows_per_partition': 'ALL'}
      and compaction = {'class': 'SizeTieredCompactionStrategy'}

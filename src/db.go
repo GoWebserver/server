@@ -2,6 +2,7 @@ package src
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -39,19 +40,23 @@ func DBInit() {
 	log.Log("Session Connection established")
 }
 
-func GetMimeTypes() map[string]string {
+func GetMimeTypes() []Mime {
 	now := time.Now()
 	//language=SQL
 	iter := Session.Query(
-		"SELECT extension, mimetype FROM server.mime",
+		"SELECT regex, type, \"index\" FROM server.mime",
 	).Iter()
-	types := make(map[string]string, iter.NumRows())
+	types := make([]Mime, iter.NumRows())
 	for {
 		row := make(map[string]any)
 		if !iter.MapScan(row) {
 			break
 		}
-		types[fmt.Sprintf("%s", row["extension"])] = fmt.Sprintf("%s", row["mimetype"])
+		index, _ := strconv.Atoi(fmt.Sprintf("%d", row["index"]))
+		types[index] = Mime{
+			Regex: fmt.Sprintf("%s", row["regex"]),
+			Type:  fmt.Sprintf("%s", row["type"]),
+		}
 	}
 	if err := iter.Close(); err != nil {
 		log.Err(err, "Error loading Mime from DB")
@@ -59,4 +64,9 @@ func GetMimeTypes() map[string]string {
 	}
 	log.Debug("Loaded Mime from DB in", time.Since(now))
 	return types
+}
+
+type Mime struct {
+	Regex string
+	Type  string
 }
