@@ -11,13 +11,13 @@ func LogAccess(code int, duration int, searchDuration int, error error, writeErr
 	//language=SQL
 	query := src.Session.Query(
 		"INSERT INTO server.access (id, uri, code, duration, searchDuration, method, error, writeErr) VALUES (?,?,?,?,?,?,?,?,?)",
-		gocql.TimeUUID(), uri, code, duration, searchDuration, method, (func() interface{} {
+		gocql.TimeUUID(), uri, code, duration, searchDuration, method, (func() any {
 			if error != nil {
 				return error.Error()
 			} else {
 				return nil
 			}
-		})(), (func() interface{} {
+		})(), (func() any {
 			if writeErr != nil {
 				return writeErr.Error()
 			} else {
@@ -35,7 +35,7 @@ func LogAPIAccess(duration int, error error, request string) {
 	//language=SQL
 	query := src.Session.Query(
 		"INSERT INTO server.apiaccess (id, duration, error, request) VALUES (?,?,?,?)",
-		gocql.TimeUUID(), duration, (func() interface{} {
+		gocql.TimeUUID(), duration, (func() any {
 			if error != nil {
 				return error.Error()
 			} else {

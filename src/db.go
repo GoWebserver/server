@@ -47,7 +47,7 @@ func GetMimeTypes() map[string]string {
 	).Iter()
 	types := make(map[string]string, iter.NumRows())
 	for {
-		row := make(map[string]interface{})
+		row := make(map[string]any)
 		if !iter.MapScan(row) {
 			break
 		}

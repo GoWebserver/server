@@ -22,7 +22,7 @@ var prefix = map[string]logOptions{
 	"Error":  {suffix: "!", colorCode: "\u001b[38;2;255;0;0m"},
 }
 
-func Err(err error, message ...interface{}) {
+func Err(err error, message ...any) {
 	log(prefix["Error"], 1, message...)
 	if err != nil {
 		log(prefix["Error"], 1, err.Error())
@@ -32,13 +32,13 @@ func Err(err error, message ...interface{}) {
 	}
 }
 
-func Debug(message ...interface{}) {
+func Debug(message ...any) {
 	if config.GetConfig().Debug {
 		log(prefix["Debug"], 1, message...)
 	}
 }
 
-func Log(message ...interface{}) {
+func Log(message ...any) {
 	log(prefix["Normal"], 1, message...)
 }
 
@@ -50,7 +50,7 @@ func (w *LogWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func log(logOption logOptions, skip uint8, message ...interface{}) {
+func log(logOption logOptions, skip uint8, message ...any) {
 	now := time.Now()
 
 	var location string
