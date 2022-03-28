@@ -1,7 +1,9 @@
+#!/usr/bin/python3
+
 import json
 import sys
 
-# python3 convert.py src.json out.sql server.mime
+# ./convert.py src.json out.sql server.mime
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
@@ -20,3 +22,6 @@ if __name__ == "__main__":
             r.write(f"TRUNCATE {sys.argv[3]};\n")
             r.writelines([f"INSERT INTO {sys.argv[3]} (extension, mimetype) VALUES ('{ext}', '{typ}');\n" for ext, typ in flipped.items()])
             print("generated SQL")
+
+
+# json joinked from https://github.com/broofa/mime

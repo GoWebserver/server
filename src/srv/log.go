@@ -7,11 +7,11 @@ import (
 	"server/src/log"
 )
 
-func LogAccess(code int, duration int, searchDuration int, error error, writeErr error, https bool, method string, uri string) {
+func LogAccess(code int, duration int, searchDuration int, error error, writeErr error, method string, uri string) {
 	//language=SQL
 	query := src.Session.Query(
-		"INSERT INTO server.access (id, uri, code, duration, searchDuration, method, https, error, writeErr) VALUES (?,?,?,?,?,?,?,?,?)",
-		gocql.TimeUUID(), uri, code, duration, searchDuration, method, https, (func() interface{} {
+		"INSERT INTO server.access (id, uri, code, duration, searchDuration, method, error, writeErr) VALUES (?,?,?,?,?,?,?,?,?)",
+		gocql.TimeUUID(), uri, code, duration, searchDuration, method, (func() interface{} {
 			if error != nil {
 				return error.Error()
 			} else {

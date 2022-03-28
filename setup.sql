@@ -1,5 +1,5 @@
 create role server
-            with login = true;
+    with login = true AND PASSWORD = 'server';
 
 create keyspace server with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 use server;
@@ -10,7 +10,6 @@ create table access
     code           smallint,
     duration       int,
     error          text,
-    https          boolean,
     method         text,
     searchduration int,
     uri            text,

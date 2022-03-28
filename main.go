@@ -30,7 +30,7 @@ func main() {
 
 	serv := srv.CreateServe()
 
-	webServer := &http.Server{Addr: ":" + fmt.Sprintf("%d", config.GetConfig().PortHTTPS), Handler: serv}
+	webServer := &http.Server{Addr: ":" + fmt.Sprintf("%d", config.GetConfig().Port), Handler: serv}
 	webServer.ErrorLog = lg.New(&log.LogWriter{}, "", 0)
 	startWebServer(webServer)
 

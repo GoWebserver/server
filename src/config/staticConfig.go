@@ -51,7 +51,7 @@ type config struct {
 	// as it gets overridden with the environment variables
 	//
 	// default: 8443
-	PortHTTPS uint16 `yaml:"PortHTTPS" env:"PortHTTPS"`
+	Port uint16 `yaml:"PortHTTPS" env:"Port"`
 
 	// ApiPort used for the api must be between 0 and 65536
 	// should be different from Port to avoid trying to serve
@@ -114,7 +114,7 @@ func LoadConfig() {
 }
 
 func defaultConfig() {
-	conf.PortHTTPS = 8443
+	conf.Port = 8443
 	conf.ApiPort = 18266
 
 	conf.SitesDir = "./site"

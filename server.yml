@@ -43,19 +43,19 @@ Database:
   # Database to store logs, access logs, etc.
   #
   # default: 0
-  Port: 9044
+  Port: 9042
 
   # User of DB to connect to.
   # Database to store logs, access logs, etc.
   #
   # default: "no user provided"
-  User: 'root'
+  User: 'server'
 
   # Password of User to connect to.
   # Database to store logs, access logs, etc.
   #
   # default: "no password provided"
-  Password: 'root'
+  Password: 'server'
 
   # Keyspace of DB to use.
   # Database to store logs, access logs, etc.

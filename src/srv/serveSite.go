@@ -131,7 +131,7 @@ func CreateServe() http.HandlerFunc {
 		if er != nil {
 			log.Err(er, "Error writing response:")
 		}
-		go LogAccess(code, int(time.Since(start).Microseconds()), int(searchTime.Sub(start).Microseconds()), err, er, r.TLS != nil, r.Method, r.URL.Path)
+		go LogAccess(code, int(time.Since(start).Microseconds()), int(searchTime.Sub(start).Microseconds()), err, er, r.Method, r.URL.Path)
 	}
 
 	return fun
