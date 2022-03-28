@@ -19,6 +19,8 @@ func main() {
 	config.LoadConfig()
 	log.Log("Loaded config:", fmt.Sprintf("%+v", config.GetConfig()))
 
+	config.LoadSettings()
+
 	log.Log("Starting server")
 	src.DBInit()
 
