@@ -26,6 +26,57 @@ type settings struct {
 	//
 	// default empty
 	Mimetypes setting[[]Mime]
+
+	// min Size a file has to surpass,
+	// in order to get compressed with Deflate
+	//
+	// default 1400
+	DeflateCompressMinSize setting[uint64]
+
+	// min Size a file has to surpass,
+	// in order to get compressed with GZip
+	//
+	// default 1400
+	GZipCompressMinSize setting[uint64]
+
+	// min Size a file has to surpass,
+	// in order to get compressed with Brotli
+	//
+	// default 1400
+	BrotliCompressMinSize setting[uint64]
+
+	// min Compression a file has to achieve,
+	// in order to get compressed with Deflate
+	//
+	// default 0.2
+	DeflateCompressMinCompression setting[float32]
+
+	// min Compression a file has to achieve,
+	// in order to get compressed with GZip
+	//
+	// default 0.2
+	GZipCompressMinCompression setting[float32]
+
+	// min Compression a file has to achieve,
+	// in order to get compressed with Brotli
+	//
+	// default 0.2
+	BrotliCompressMinCompression setting[float32]
+
+	// Enable Deflate Compression
+	//
+	// default false
+	EnableDeflateCompression setting[bool]
+
+	// Enable GZip Compression
+	//
+	// default true
+	EnableGZipCompression setting[bool]
+
+	// Enable Brotli Compression
+	//
+	// default true
+	EnableBrotliCompression setting[bool]
 }
 
 type setting[T any] struct {
@@ -59,6 +110,42 @@ func LoadDefaultSettings() {
 	sett.Mimetypes = setting[[]Mime]{
 		Data:     []Mime{},
 		liveTime: atStartup,
+	}
+	sett.GZipCompressMinSize = setting[uint64]{
+		Data:     1400,
+		liveTime: onReload,
+	}
+	sett.DeflateCompressMinSize = setting[uint64]{
+		Data:     1400,
+		liveTime: onReload,
+	}
+	sett.BrotliCompressMinSize = setting[uint64]{
+		Data:     1400,
+		liveTime: onReload,
+	}
+	sett.GZipCompressMinCompression = setting[float32]{
+		Data:     0.2,
+		liveTime: onReload,
+	}
+	sett.DeflateCompressMinCompression = setting[float32]{
+		Data:     0.2,
+		liveTime: onReload,
+	}
+	sett.BrotliCompressMinCompression = setting[float32]{
+		Data:     0.2,
+		liveTime: onReload,
+	}
+	sett.EnableDeflateCompression = setting[bool]{
+		Data:     false,
+		liveTime: onReload,
+	}
+	sett.EnableGZipCompression = setting[bool]{
+		Data:     true,
+		liveTime: onReload,
+	}
+	sett.EnableBrotliCompression = setting[bool]{
+		Data:     true,
+		liveTime: onReload,
 	}
 }
 
