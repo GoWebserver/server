@@ -47,7 +47,7 @@ func main() {
 
 func startWebServer(webServer *http.Server) {
 	// blocks if success
-	log.Log(fmt.Sprintf("ListenAndServe Webserver with TLS started on localhost%s", webServer.Addr))
+	log.Log(fmt.Sprintf("ListenAndServe Webserver with TLS started on https://localhost%s", webServer.Addr))
 	err := webServer.ListenAndServeTLS(config.CertsFile, config.KeyFile)
 
 	if err != nil {

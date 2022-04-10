@@ -11,7 +11,7 @@ import (
 	"server/src/settings"
 )
 
-func getSite(path string, host string) (*[]byte, int, error) {
+func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, int, error) {
 	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
 		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {
 			site, code := GetErrorSite(Forbidden, host, path)
@@ -42,16 +42,16 @@ func getSite(path string, host string) (*[]byte, int, error) {
 			break
 		}
 	}
-	site := dir.files[pathSplit[depth-1]]
-	if site == nil {
+	site, ok := dir.files[pathSplit[depth-1]]
+	if !ok {
 		if _, ok := dir.dirs[pathSplit[depth-1]]; ok {
 			// site, code := GetErrorSite(NotFound, host, path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
-			return &site, 404, errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
+			return nil, 404, errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
 		}
 		// site, code := GetErrorSite(NotFound, host, path)
-		return &site, 404, errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
+		return nil, 404, errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
 	}
-	return &site, 200, nil
+	return site.getSmallest(availableEncodings), 200, nil
 }
 
 // CreateServe
@@ -63,8 +63,17 @@ func CreateServe() http.HandlerFunc {
 		if r.URL.Path == "/" {
 			r.URL.Path = settings.GetSettings().DefaultSite.Data
 		}
+		encodings := strings.Split(r.Header.Get("Accept-Encoding"), ",")
+		availableEncodings := map[Encoding]bool{
+			Deflate: false,
+			GZip:    false,
+			Brotli:  false,
+		}
+		for _, encoding := range encodings {
+			availableEncodings[Encoding(encoding)] = true
+		}
 
-		msg, code, err := getSite(r.URL.Path, r.Host)
+		msg, code, err := getSite(r.URL.Path, r.Host, &availableEncodings)
 
 		searchTime := time.Now()
 
@@ -90,3 +99,11 @@ func CreateServe() http.HandlerFunc {
 
 	return fun
 }
+
+type Encoding string
+
+const (
+	GZip    Encoding = "gzip"
+	Deflate Encoding = "deflate"
+	Brotli  Encoding = "br"
+)

@@ -3,7 +3,6 @@ package srv
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"time"
 
 	"server/src/config"
@@ -24,34 +23,66 @@ func LoadSites() error {
 }
 
 type dir struct {
-	files map[string][]byte
+	files map[string]file
 	dirs  map[string]dir
 }
 
-func loadDir(name string, size *uint64, count *uint32) dir {
-	siteCount, err := ioutil.ReadDir(name)
+type file struct {
+	raw     []byte
+	gzip    []byte
+	deflate []byte
+	br      []byte
+}
+
+func (file *file) getSmallest(encodings *map[Encoding]bool) *[]byte {
+	// order matters
+	if (*encodings)[Brotli] && file.br != nil {
+		return &file.br
+	}
+	if (*encodings)[GZip] && file.gzip != nil {
+		return &file.gzip
+	}
+	if (*encodings)[Deflate] && file.deflate != nil {
+		return &file.deflate
+	}
+
+	return &file.raw
+}
+
+func loadDir(path string, size *uint64, count *uint32) dir {
+	siteCount, err := ioutil.ReadDir(path)
 	if err != nil {
-		log.Err(err, "Error reading directory", name)
+		log.Err(err, "Error reading directory", path)
 		return dir{}
 	}
-	dir := dir{map[string][]byte{}, map[string]dir{}}
+	dir := dir{map[string]file{}, map[string]dir{}}
 
 	for _, site := range siteCount {
-		if info, _ := os.Stat(name + "/" + site.Name()); info.IsDir() {
-			dr := loadDir(name+"/"+site.Name(), size, count)
+		if site.IsDir() {
+			dr := loadDir(fmt.Sprintf("%s/%s", path, site.Name()), size, count)
 			dir.dirs[site.Name()] = dr
-			log.Debug("Loaded directory in cache", fmt.Sprintf("%s/%s", name, site.Name()))
+			log.Debug(fmt.Sprintf("Loaded directory in cache %s/%s", path, site.Name()))
 		} else {
-			tmpSite, err := ioutil.ReadFile(name + "/" + site.Name())
+			tmpSite, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", path, site.Name()))
 			if err != nil {
-				log.Err(err, "Error loading site", fmt.Sprintf("%s/%s", name, site.Name()))
+				log.Err(err, fmt.Sprintf("Error loading site %s/%s", path, site.Name()))
 			} else {
-				*size += uint64(len(tmpSite))
+				*size += uint64(site.Size())
 				*count++
-				dir.files[site.Name()] = tmpSite
-				log.Debug("Loaded site in cache", fmt.Sprintf("%s/%s", name, site.Name()))
+				dir.files[site.Name()] = createFile(&tmpSite)
+				log.Debug(fmt.Sprintf("Loaded site in cache %s/%s  Size:%dMB", path, site.Name(), site.Size()/1048576))
 			}
 		}
 	}
 	return dir
+}
+
+func createFile(raw *[]byte) file {
+	log.Debug(len(*raw))
+	return file{
+		raw:     *raw,
+		gzip:    nil,
+		deflate: nil,
+		br:      nil,
+	}
 }
