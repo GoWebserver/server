@@ -27,7 +27,6 @@ func main() {
 	log.Log("Starting server")
 	src.DBInit()
 
-	settings.LoadMime()
 	err := srv.LoadSites()
 	if err != nil {
 		panic(err)

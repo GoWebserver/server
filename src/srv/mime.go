@@ -10,7 +10,7 @@ import (
 func getMime(filename string) (string, bool) {
 	start := time.Now()
 	index := 0
-	for _, s := range settings.GetSettings().Mimetypes.Data {
+	for _, s := range settings.GetSettings().Mimetypes.Get() {
 		if s.Regex.Match([]byte(filename)) {
 			log.Debug(float32(time.Since(start).Microseconds()))
 			log.Debug(index)

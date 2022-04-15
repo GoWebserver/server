@@ -61,7 +61,7 @@ func CreateServe() http.HandlerFunc {
 	fun := func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		if r.URL.Path == "/" {
-			r.URL.Path = settings.GetSettings().DefaultSite.Data
+			r.URL.Path = settings.GetSettings().DefaultSite.Get()
 		}
 		encodings := strings.Split(r.Header.Get("Accept-Encoding"), ",")
 		availableEncodings := map[Encoding]bool{

@@ -1,10 +1,6 @@
 package src
 
 import (
-	"fmt"
-	"strconv"
-	"time"
-
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2"
 
@@ -38,35 +34,4 @@ func DBInit() {
 		panic(err)
 	}
 	log.Log("Session Connection established")
-}
-
-func GetMimeTypes() []Mime {
-	now := time.Now()
-	//language=SQL
-	iter := Session.Query(
-		"SELECT regex, type, \"index\" FROM server.mime",
-	).Iter()
-	types := make([]Mime, iter.NumRows())
-	for {
-		row := make(map[string]any)
-		if !iter.MapScan(row) {
-			break
-		}
-		index, _ := strconv.Atoi(fmt.Sprintf("%d", row["index"]))
-		types[index] = Mime{
-			Regex: fmt.Sprintf("%s", row["regex"]),
-			Type:  fmt.Sprintf("%s", row["type"]),
-		}
-	}
-	if err := iter.Close(); err != nil {
-		log.Err(err, "Error loading Mime from DB")
-		log.Debug(iter.Warnings())
-	}
-	log.Debug("Loaded Mime from DB in", time.Since(now))
-	return types
-}
-
-type Mime struct {
-	Regex string
-	Type  string
 }
