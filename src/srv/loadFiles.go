@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"runtime"
+	"strings"
 	"time"
 
 	"server/src/config"
@@ -16,7 +17,7 @@ import (
 
 var root dir
 
-func LoadSites() error {
+func LoadSites() {
 	log.Log("Loading Sites into Cache")
 	start := time.Now()
 	var size uint64
@@ -24,8 +25,6 @@ func LoadSites() error {
 	root = loadDir(config.GetConfig().SitesDir, &size, &count)
 	log.Log(fmt.Sprintf("All files (%d) loaded in %s  Size:%dMB", count, time.Since(start), size/1048576))
 	runtime.GC()
-
-	return nil
 }
 
 type dir struct {
@@ -33,38 +32,43 @@ type dir struct {
 	dirs  map[string]dir
 }
 
-type file struct {
+type data struct {
 	raw     []byte
 	gzip    []byte
 	deflate []byte
 	br      []byte
 }
 
-func (file *file) getSmallest(encodings *map[Encoding]bool) *[]byte {
+type file struct {
+	data     data
+	mimetype string
+}
+
+func (data *data) getSmallest(encodings *map[Encoding]bool) *[]byte {
 	// order matters
-	if (*encodings)[Deflate] && file.deflate != nil {
-		return &file.deflate
+	if (*encodings)[Deflate] && data.deflate != nil {
+		return &data.deflate
 	}
-	if (*encodings)[GZip] && file.gzip != nil {
-		return &file.gzip
+	if (*encodings)[GZip] && data.gzip != nil {
+		return &data.gzip
 	}
-	if (*encodings)[Brotli] && file.br != nil {
-		return &file.br
+	if (*encodings)[Brotli] && data.br != nil {
+		return &data.br
 	}
 
-	return &file.raw
+	return &data.raw
 }
 
 func (file *file) getSize() (size uint64) {
-	size = uint64(len(file.raw))
-	if file.deflate != nil {
-		size += uint64(len(file.deflate))
+	size = uint64(len(file.data.raw))
+	if file.data.deflate != nil {
+		size += uint64(len(file.data.deflate))
 	}
-	if file.gzip != nil {
-		size += uint64(len(file.gzip))
+	if file.data.gzip != nil {
+		size += uint64(len(file.data.gzip))
 	}
-	if file.br != nil {
-		size += uint64(len(file.br))
+	if file.data.br != nil {
+		size += uint64(len(file.data.br))
 	}
 	return
 }
@@ -99,13 +103,17 @@ func loadDir(path string, size *uint64, count *uint32) dir {
 }
 
 func createFile(raw []byte, name string) *file {
-	f := file{
-		raw:     raw,
-		deflate: nil,
-		gzip:    nil,
-		br:      nil,
+	file := file{
+		data: data{
+			raw:     raw,
+			deflate: nil,
+			gzip:    nil,
+			br:      nil,
+		},
+		mimetype: "",
 	}
 
+	// ---------- flate compress ----------
 	if uint64(len(raw)) > settings.GetSettings().DeflateCompressMinSize.Get() && settings.GetSettings().EnableDeflateCompression.Get() {
 		now := time.Now()
 		var buf bytes.Buffer
@@ -120,14 +128,15 @@ func createFile(raw []byte, name string) *file {
 		if err := writer.Close(); err != nil {
 			log.Err(err, fmt.Sprintf("Error Flating file %s", name))
 		}
-		if float32(len(f.raw)-buf.Len())/float32(len(f.raw))*100 > settings.GetSettings().DeflateCompressMinCompression.Get() {
-			f.deflate = buf.Bytes()
+		if float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100 > settings.GetSettings().DeflateCompressMinCompression.Get() {
+			file.data.deflate = buf.Bytes()
 		} else {
-			log.Debug("compression to small for flate", float32(len(f.raw)-buf.Len())/float32(len(f.raw))*100, name)
+			log.Debug("compression to small for flate", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, name)
 		}
 		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  flate")
 	}
 
+	// ---------- gzip compress ----------
 	if uint64(len(raw)) > settings.GetSettings().GZipCompressMinSize.Get() && settings.GetSettings().EnableGZipCompression.Get() {
 		now := time.Now()
 		var buf bytes.Buffer
@@ -142,37 +151,63 @@ func createFile(raw []byte, name string) *file {
 		if err := writer.Close(); err != nil {
 			log.Err(err, fmt.Sprintf("Error GZipping file %s", name))
 		}
-		if float32(len(f.raw)-buf.Len())/float32(len(f.raw))*100 > settings.GetSettings().GZipCompressMinCompression.Get() {
-			f.gzip = buf.Bytes()
+		if float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100 > settings.GetSettings().GZipCompressMinCompression.Get() {
+			file.data.gzip = buf.Bytes()
 		} else {
-			log.Debug("compression to small for gzip", float32(len(f.raw)-buf.Len())/float32(len(f.raw))*100, name)
+			log.Debug("compression to small for gzip", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, name)
 		}
 		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  gzip")
 	}
 
+	// ---------- br compress ----------
+	//
+
+	// ---------- mimetype ----------
+	fileSplit := strings.Split(name, ".")
+	filetype := fileSplit[len(fileSplit)-1]
+	if val, exists := getMime(filetype); exists {
+		file.mimetype = val
+	} else {
+		file.mimetype = ""
+		log.Debug("unknown MimeType for extension"+
+			"", filetype)
+	}
+
+	// ---------- log ----------
 	log.Debug(fmt.Sprintf(
-		"Created file %s with sizes: {raw:%dMB, flate:%s, gzip:%s, brotli:%s}", name,
-		len(f.raw)/1048576,
+		"Loaded file %s with sizes: {raw:%dMB, flate:%s, gzip:%s, brotli:%s} mimetype:%s", name,
+		len(file.data.raw)/1048576,
 		(func() string {
-			if f.deflate != nil {
-				return fmt.Sprintf("%dMB %.2f%%compression", len(f.deflate)/1048576, float32(len(f.raw)-len(f.deflate))/float32(len(f.raw))*100)
+			if file.data.deflate != nil {
+				return fmt.Sprintf("%dMB %.2f%%compression", len(file.data.deflate)/1048576, float32(len(file.data.raw)-len(file.data.deflate))/float32(len(file.data.raw))*100)
 			} else {
 				return "no Compression"
 			}
 		})(),
 		(func() string {
-			if f.gzip != nil {
-				return fmt.Sprintf("%dMB %.2f%%compression", len(f.gzip)/1048576, float32(len(f.raw)-len(f.gzip))/float32(len(f.raw))*100)
+			if file.data.gzip != nil {
+				return fmt.Sprintf("%dMB %.2f%%compression", len(file.data.gzip)/1048576, float32(len(file.data.raw)-len(file.data.gzip))/float32(len(file.data.raw))*100)
 			} else {
 				return "no Compression"
 			}
 		})(), (func() string {
-			if f.br != nil {
-				return fmt.Sprintf("%dMB %.2f%%compression", len(f.br)/1048576, float32(len(f.raw)-len(f.br))/float32(len(f.raw))*100)
+			if file.data.br != nil {
+				return fmt.Sprintf("%dMB %.2f%%compression", len(file.data.br)/1048576, float32(len(file.data.raw)-len(file.data.br))/float32(len(file.data.raw))*100)
 			} else {
 				return "no Compression"
 			}
-		})(),
+		})(), file.mimetype,
 	))
-	return &f
+	return &file
+}
+
+func getMime(filename string) (string, bool) {
+	index := 0
+	for _, s := range settings.GetSettings().Mimetypes.Get() {
+		if s.Regex.Match([]byte(filename)) {
+			return s.Type, true
+		}
+		index++
+	}
+	return "", false
 }

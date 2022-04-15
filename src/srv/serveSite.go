@@ -11,7 +11,13 @@ import (
 	"server/src/settings"
 )
 
-func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, int, error) {
+type site struct {
+	data     *[]byte
+	encoding Encoding
+	mimetype string
+}
+
+func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, int, string, error) {
 	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
 		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {
 			site, code := GetErrorSite(Forbidden, host, path)
@@ -42,16 +48,16 @@ func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*
 			break
 		}
 	}
-	site, ok := dir.files[pathSplit[depth-1]]
+	file, ok := dir.files[pathSplit[depth-1]]
 	if !ok {
 		if _, ok := dir.dirs[pathSplit[depth-1]]; ok {
 			// site, code := GetErrorSite(NotFound, host, path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
-			return nil, 404, errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
+			return nil, 404, "", errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
 		}
 		// site, code := GetErrorSite(NotFound, host, path)
-		return nil, 404, errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
+		return nil, 404, "", errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
 	}
-	return site.getSmallest(availableEncodings), 200, nil
+	return file.data.getSmallest(availableEncodings), 200, file.mimetype, nil
 }
 
 // CreateServe
@@ -73,7 +79,7 @@ func CreateServe() http.HandlerFunc {
 			availableEncodings[Encoding(strings.TrimSpace(encoding))] = true
 		}
 
-		msg, code, err := getSite(r.URL.Path, r.Host, &availableEncodings)
+		msg, code, mime, err := getSite(r.URL.Path, r.Host, &availableEncodings)
 
 		searchTime := time.Now()
 
@@ -81,13 +87,7 @@ func CreateServe() http.HandlerFunc {
 			log.Err(err, fmt.Sprintf("Error getting site %s", r.URL.Path))
 			w.WriteHeader(code)
 		} else {
-			fileSplit := strings.Split(r.URL.Path[1:], ".")
-			filetype := fileSplit[len(fileSplit)-1]
-			if val, exists := getMime(filetype); exists {
-				w.Header().Set("Content-Type", val)
-			} else {
-				log.Log("unknown MimeType", filetype)
-			}
+			w.Header().Set("Content-Type", mime)
 		}
 
 		_, er := w.Write(*msg)

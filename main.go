@@ -27,10 +27,7 @@ func main() {
 	log.Log("Starting server")
 	src.DBInit()
 
-	err := srv.LoadSites()
-	if err != nil {
-		panic(err)
-	}
+	srv.LoadSites()
 
 	serv := srv.CreateServe()
 

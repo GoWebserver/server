@@ -62,7 +62,7 @@ func log(logOption logOptions, skip uint8, message ...any) {
 	}
 
 	file = file[strings.LastIndexByte(file, '/')+1:] // get relative path
-	location = fmt.Sprintf("%-16s", fmt.Sprintf("%s:%d", file, line))
+	location = fmt.Sprintf("%-18s", fmt.Sprintf("%s:%d", file, line))
 
 	var printStr string
 	for _, mess := range message {
