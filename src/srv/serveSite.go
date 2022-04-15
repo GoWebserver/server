@@ -70,7 +70,7 @@ func CreateServe() http.HandlerFunc {
 			Brotli:  false,
 		}
 		for _, encoding := range encodings {
-			availableEncodings[Encoding(encoding)] = true
+			availableEncodings[Encoding(strings.TrimSpace(encoding))] = true
 		}
 
 		msg, code, err := getSite(r.URL.Path, r.Host, &availableEncodings)
