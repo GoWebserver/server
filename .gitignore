@@ -1,5 +1,5 @@
 /.idea
 /mime/out.sql
 
-/certs/cert.pem
+/certs/cert.crt
 /certs/key.key

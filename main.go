@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	lg "log"
 	"net/http"
+	"sync"
 
 	// graph "server/graphql"
 	// gen "server/graphql/generated"
@@ -33,9 +35,30 @@ func main() {
 
 	serv := srv.CreateServe()
 
-	webServer := &http.Server{Addr: ":" + fmt.Sprintf("%d", config.GetConfig().Port), Handler: serv}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+
+	cert, _ := tls.LoadX509KeyPair(config.CertsFile, config.KeyFile)
+
+	// Create the TLS Config with the CA pool and enable Client certificate validation
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		// ClientAuth:   tls.RequireAndVerifyClientCert,
+	}
+	// tlsConfig.BuildNameToCertificate()
+
+	// Create a Server instance to listen on port 8443 with the TLS config
+	webServer := &http.Server{
+		Addr:      ":" + fmt.Sprintf("%d", config.GetConfig().Port),
+		Handler:   serv,
+		TLSConfig: tlsConfig,
+	}
 	webServer.ErrorLog = lg.New(&log.LogWriter{}, "", 0)
-	startWebServer(webServer)
+
+	go func() {
+		startWebServer(webServer)
+		wg.Done()
+	}()
 
 	// http.HandleFunc("/", graph.GetPlayground)
 	// http.Handle("/query", handler.NewDefaultServer(gen.NewExecutableSchema(gen.Config{Resolvers: graph.GenResolver()})))
@@ -43,15 +66,18 @@ func main() {
 	// APIServer.ErrorLog = lg.New(&log.LogWriter{}, "", 0)
 	//
 	// startAPI(APIServer)
+
+	wg.Wait()
 }
 
 func startWebServer(webServer *http.Server) {
 	// blocks if success
 	log.Log(fmt.Sprintf("ListenAndServe Webserver with TLS started on https://localhost%s", webServer.Addr))
-	err := webServer.ListenAndServeTLS(config.CertsFile, config.KeyFile)
+	err := webServer.ListenAndServeTLS("", "") // files get ignored, already provided via tlsConfig
 
 	if err != nil {
 		log.Err(err, "Error starting webServer")
+		panic(err)
 	}
 }
 
@@ -62,5 +88,6 @@ func startAPI(api *http.Server) {
 
 	if err != nil {
 		log.Err(err, "Error starting Api")
+		panic(err)
 	}
 }
