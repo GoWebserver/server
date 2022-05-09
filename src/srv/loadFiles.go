@@ -44,19 +44,25 @@ type file struct {
 	mimetype string
 }
 
-func (data *data) getSmallest(encodings *map[Encoding]bool) *[]byte {
-	// order matters
-	if (*encodings)[Deflate] && data.deflate != nil {
-		return &data.deflate
+func (data *data) getSmallest(encodings *map[Encoding]bool) (dat *[]byte, encoding Encoding) {
+	dat = &data.raw
+	var min = 0
+	if (*encodings)[Deflate] && data.deflate != nil && len(data.deflate) < min {
+		min = len(data.deflate)
+		dat = &data.deflate
+		encoding = Deflate
 	}
-	if (*encodings)[GZip] && data.gzip != nil {
-		return &data.gzip
+	if (*encodings)[GZip] && data.gzip != nil && len(data.gzip) < min {
+		min = len(data.gzip)
+		dat = &data.gzip
+		encoding = GZip
 	}
-	if (*encodings)[Brotli] && data.br != nil {
-		return &data.br
+	if (*encodings)[Brotli] && data.br != nil && len(data.br) < min {
+		min = len(data.br)
+		dat = &data.br
+		encoding = Brotli
 	}
-
-	return &data.raw
+	return
 }
 
 func (file *file) getSize() (size uint64) {
@@ -169,8 +175,7 @@ func createFile(raw []byte, name string) *file {
 		file.mimetype = val
 	} else {
 		file.mimetype = ""
-		log.Debug("unknown MimeType for extension"+
-			"", filetype)
+		log.Debug("unknown MimeType for extension", filetype)
 	}
 
 	// ---------- log ----------
