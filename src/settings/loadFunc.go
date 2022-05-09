@@ -15,11 +15,6 @@ type Mime struct {
 	Type  string
 }
 
-type DBMime struct {
-	Regex string
-	Type  string
-}
-
 func LoadMimetypes() error {
 	now := time.Now()
 

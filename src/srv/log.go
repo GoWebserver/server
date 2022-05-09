@@ -7,10 +7,10 @@ import (
 	"server/src/log"
 )
 
-func LogAccess(code int, duration int, searchDuration int, error error, writeErr error, method string, uri string) {
+func LogAccess(code int, duration int, searchDuration int, error error, writeErr error, method string, uri string, encoding Encoding) {
 	//language=SQL
 	query := src.Session.Query(
-		"INSERT INTO server.access (id, uri, code, duration, searchDuration, method, error, writeErr) VALUES (?,?,?,?,?,?,?,?)",
+		"INSERT INTO server.access (id, uri, code, duration, searchDuration, method, error, writeErr, encoding) VALUES (?,?,?,?,?,?,?,?,?)",
 		gocql.TimeUUID(), uri, code, duration, searchDuration, method, (func() any {
 			if error != nil {
 				return error.Error()
@@ -23,7 +23,7 @@ func LogAccess(code int, duration int, searchDuration int, error error, writeErr
 			} else {
 				return nil
 			}
-		})())
+		})(), encoding)
 	err := query.Exec()
 	if err != nil {
 		log.Err(err, "Error inserting access into DB")

@@ -34,22 +34,22 @@ func main() {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
-	cert, _ := tls.LoadX509KeyPair(config.CertsFile, config.KeyFile)
+	crt, err := tls.LoadX509KeyPair(config.CertsFile, config.KeyFile)
+	if err != nil {
+		panic(err)
+	}
 
-	// Create the TLS Config with the CA pool and enable Client certificate validation
 	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{cert},
+		Certificates: []tls.Certificate{crt},
 		// ClientAuth:   tls.RequireAndVerifyClientCert,
 	}
-	// tlsConfig.BuildNameToCertificate()
 
-	// Create a Server instance to listen on port 8443 with the TLS config
 	webServer := &http.Server{
 		Addr:      ":" + fmt.Sprintf("%d", config.GetConfig().Port),
 		Handler:   serv,
 		TLSConfig: tlsConfig,
+		ErrorLog:  lg.New(&log.LogWriter{}, "", 0),
 	}
-	webServer.ErrorLog = lg.New(&log.LogWriter{}, "", 0)
 
 	go func() {
 		startWebServer(webServer)

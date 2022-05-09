@@ -1,5 +1,5 @@
 create role server
-    with login = true AND PASSWORD = 'server';
+            with login = true AND PASSWORD = 'server';
 
 create keyspace server with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
 use server;
@@ -13,7 +13,8 @@ create table access
     method         text,
     searchduration int,
     uri            text,
-    writeerr       text
+    writeerr       text,
+    encoding       text,
 )
     with caching = {'keys': 'ALL', 'rows_per_partition': 'ALL'}
      and compaction = {'class': 'SizeTieredCompactionStrategy'}
