@@ -17,7 +17,7 @@ type site struct {
 	mimetype string
 }
 
-func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, int, string, error) {
+func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, Encoding, int, string, error) {
 	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
 		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {
 			site, code := GetErrorSite(Forbidden, host, path)
@@ -52,12 +52,13 @@ func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*
 	if !ok {
 		if _, ok := dir.dirs[pathSplit[depth-1]]; ok {
 			// site, code := GetErrorSite(NotFound, host, path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
-			return nil, 404, "", errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
+			return nil, "", 404, "", errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
 		}
 		// site, code := GetErrorSite(NotFound, host, path)
-		return nil, 404, "", errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
+		return nil, "", 404, "", errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
 	}
-	return file.data.getSmallest(availableEncodings), 200, file.mimetype, nil
+	data, encoding := file.data.getSmallest(availableEncodings)
+	return data, encoding, 200, file.mimetype, nil
 }
 
 // CreateServe
@@ -65,6 +66,9 @@ func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*
 // Registers a handle for '/' to serve the DefaultSite
 func CreateServe() http.HandlerFunc {
 	fun := func(w http.ResponseWriter, r *http.Request) {
+		if settings.GetSettings().ServerOff.Get() {
+			w.WriteHeader(http.StatusGone)
+		}
 		start := time.Now()
 		if r.URL.Path == "/" {
 			r.URL.Path = settings.GetSettings().DefaultSite.Get()
@@ -79,7 +83,7 @@ func CreateServe() http.HandlerFunc {
 			availableEncodings[Encoding(strings.TrimSpace(encoding))] = true
 		}
 
-		msg, code, mime, err := getSite(r.URL.Path, r.Host, &availableEncodings)
+		msg, encoding, code, mime, err := getSite(r.URL.Path, r.Host, &availableEncodings)
 
 		searchTime := time.Now()
 
@@ -88,13 +92,16 @@ func CreateServe() http.HandlerFunc {
 			w.WriteHeader(code)
 		} else {
 			w.Header().Set("Content-Type", mime)
+			if encoding != "" {
+				w.Header().Set("Content-encoding", string(encoding))
+			}
 		}
 
 		_, er := w.Write(*msg)
 		if er != nil {
 			log.Err(er, "Error writing response:")
 		}
-		go LogAccess(code, int(time.Since(start).Microseconds()), int(searchTime.Sub(start).Microseconds()), err, er, r.Method, r.URL.Path)
+		go LogAccess(code, int(time.Since(start).Microseconds()), int(searchTime.Sub(start).Microseconds()), err, er, r.Method, r.URL.Path, encoding)
 	}
 
 	return fun
