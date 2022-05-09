@@ -21,9 +21,10 @@ func LoadSites() {
 	log.Log("Loading Sites into Cache")
 	start := time.Now()
 	var size uint64
-	var count uint32
+	var count counter
 	root = loadDir(config.GetConfig().SitesDir, &size, &count)
-	log.Log(fmt.Sprintf("All files (%d) loaded in %s  Size:%dMB", count, time.Since(start), size/1048576))
+	log.Log(fmt.Sprintf("All files (%d) loaded in %s  Size:%dMB", count.count, time.Since(start), size/1048576))
+	log.Debug(fmt.Sprintf("%d raw; %d deflate; %d gzip; %d br", count.rawcount, count.deflatecount, count.gzipcount, count.brcount))
 	runtime.GC()
 }
 
@@ -79,7 +80,15 @@ func (file *file) getSize() (size uint64) {
 	return
 }
 
-func loadDir(path string, size *uint64, count *uint32) dir {
+type counter struct {
+	count        uint32
+	rawcount     uint32
+	deflatecount uint32
+	gzipcount    uint32
+	brcount      uint32
+}
+
+func loadDir(path string, size *uint64, count *counter) dir {
 	siteCount, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Err(err, "Error reading directory", path)
@@ -97,18 +106,17 @@ func loadDir(path string, size *uint64, count *uint32) dir {
 			if err != nil {
 				log.Err(err, fmt.Sprintf("Error loading site %s/%s", path, site.Name()))
 			} else {
-				file := createFile(tmpSite, site.Name())
+				file := createFile(tmpSite, site.Name(), count)
 				*size += file.getSize()
-				*count++
 				dir.files[site.Name()] = file
-				log.Debug(fmt.Sprintf("Loaded site in cache %s/%s  Size:%dMB", path, site.Name(), file.getSize()/1048576))
+				log.Debug(fmt.Sprintf("Loaded site %s/%s  Size:%dMB", path, site.Name(), file.getSize()/1048576))
 			}
 		}
 	}
 	return dir
 }
 
-func createFile(raw []byte, name string) *file {
+func createFile(raw []byte, name string, count *counter) *file {
 	file := file{
 		data: data{
 			raw:     raw,
@@ -119,7 +127,7 @@ func createFile(raw []byte, name string) *file {
 		mimetype: "",
 	}
 
-	// ---------- flate compress ----------
+	// ---------- deflate compress ----------
 	if uint64(len(raw)) > settings.GetSettings().DeflateCompressMinSize.Get() && settings.GetSettings().EnableDeflateCompression.Get() {
 		now := time.Now()
 		var buf bytes.Buffer
@@ -139,7 +147,8 @@ func createFile(raw []byte, name string) *file {
 		} else {
 			log.Debug("compression to small for flate", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, name)
 		}
-		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  flate")
+		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  deflate")
+		count.deflatecount++
 	}
 
 	// ---------- gzip compress ----------
@@ -163,6 +172,7 @@ func createFile(raw []byte, name string) *file {
 			log.Debug("compression to small for gzip", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, name)
 		}
 		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  gzip")
+		count.gzipcount++
 	}
 
 	// ---------- br compress ----------
@@ -203,6 +213,7 @@ func createFile(raw []byte, name string) *file {
 			}
 		})(), file.mimetype,
 	))
+	count.count++
 	return &file
 }
 
