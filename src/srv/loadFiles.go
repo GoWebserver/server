@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andybalholm/brotli"
+
 	"server/src/config"
 	"server/src/log"
 	"server/src/settings"
@@ -47,7 +49,7 @@ type file struct {
 
 func (data *data) getSmallest(encodings *map[Encoding]bool) (dat *[]byte, encoding Encoding) {
 	dat = &data.raw
-	var min = 0
+	var min = len(data.raw)
 	if (*encodings)[Deflate] && data.deflate != nil && len(data.deflate) < min {
 		min = len(data.deflate)
 		dat = &data.deflate
@@ -126,6 +128,7 @@ func createFile(raw []byte, name string, count *counter) *file {
 		},
 		mimetype: "",
 	}
+	count.rawcount++
 
 	// ---------- deflate compress ----------
 	if uint64(len(raw)) > settings.GetSettings().DeflateCompressMinSize.Get() && settings.GetSettings().EnableDeflateCompression.Get() {
@@ -145,7 +148,7 @@ func createFile(raw []byte, name string, count *counter) *file {
 		if float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100 > settings.GetSettings().DeflateCompressMinCompression.Get() {
 			file.data.deflate = buf.Bytes()
 		} else {
-			log.Debug("compression to small for flate", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, name)
+			log.Debug("compression to small for flate", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, "% ", name)
 		}
 		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  deflate")
 		count.deflatecount++
@@ -155,7 +158,7 @@ func createFile(raw []byte, name string, count *counter) *file {
 	if uint64(len(raw)) > settings.GetSettings().GZipCompressMinSize.Get() && settings.GetSettings().EnableGZipCompression.Get() {
 		now := time.Now()
 		var buf bytes.Buffer
-		writer, err := gzip.NewWriterLevel(&buf, flate.BestCompression)
+		writer, err := gzip.NewWriterLevel(&buf, gzip.BestCompression)
 		if err != nil {
 			log.Err(err, fmt.Sprintf("Error GZipping file %s", name))
 		}
@@ -169,14 +172,32 @@ func createFile(raw []byte, name string, count *counter) *file {
 		if float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100 > settings.GetSettings().GZipCompressMinCompression.Get() {
 			file.data.gzip = buf.Bytes()
 		} else {
-			log.Debug("compression to small for gzip", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, name)
+			log.Debug("compression to small for gzip", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, "% ", name)
 		}
 		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  gzip")
 		count.gzipcount++
 	}
 
 	// ---------- br compress ----------
-	//
+	if uint64(len(raw)) > settings.GetSettings().BrotliCompressMinSize.Get() && settings.GetSettings().EnableBrotliCompression.Get() {
+		now := time.Now()
+		var buf bytes.Buffer
+		writer := brotli.NewWriterLevel(&buf, brotli.BestCompression)
+		_, err := writer.Write(raw)
+		if err != nil {
+			log.Err(err, fmt.Sprintf("Error Brotling file %s", name))
+		}
+		if err := writer.Close(); err != nil {
+			log.Err(err, fmt.Sprintf("Error Brotling file %s", name))
+		}
+		if float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100 > settings.GetSettings().BrotliCompressMinCompression.Get() {
+			file.data.br = buf.Bytes()
+		} else {
+			log.Debug("compression to small for brotli", float32(len(file.data.raw)-buf.Len())/float32(len(file.data.raw))*100, "% ", name)
+		}
+		log.Debug("compressTime:", int(time.Since(now).Milliseconds()), "ms  brotli")
+		count.brcount++
+	}
 
 	// ---------- mimetype ----------
 	fileSplit := strings.Split(name, ".")

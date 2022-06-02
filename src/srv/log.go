@@ -29,6 +29,7 @@ func LogAccess(code int, duration int, searchDuration int, error error, writeErr
 		log.Err(err, "Error inserting access into DB")
 		log.Debug(query.Context())
 	}
+	log.Debug("LogAccess", uri, code, duration, searchDuration, method, error, writeErr, encoding)
 }
 
 func LogAPIAccess(duration int, error error, request string) {
@@ -47,4 +48,5 @@ func LogAPIAccess(duration int, error error, request string) {
 		log.Err(err, "Error inserting accessapi into DB")
 		log.Debug(query.Context())
 	}
+	log.Debug("LogAPIAccess", duration, error, request)
 }
