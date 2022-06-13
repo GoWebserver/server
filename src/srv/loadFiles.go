@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/andybalholm/brotli"
@@ -24,7 +25,9 @@ func LoadSites() {
 	start := time.Now()
 	var size uint64
 	var count counter
-	root = loadDir(config.GetConfig().SitesDir, &size, &count)
+	wg := sync.WaitGroup{}
+	root = loadDir(config.GetConfig().SitesDir, &size, &count, &wg)
+	wg.Wait()
 	log.Log(fmt.Sprintf("All files (%d) loaded in %s  Size:%dMB", count.count, time.Since(start), size/1048576))
 	log.Debug(fmt.Sprintf("%d raw; %d deflate; %d gzip; %d br", count.rawcount, count.deflatecount, count.gzipcount, count.brcount))
 	runtime.GC()
@@ -90,7 +93,7 @@ type counter struct {
 	brcount      uint32
 }
 
-func loadDir(path string, size *uint64, count *counter) dir {
+func loadDir(path string, size *uint64, count *counter, wg *sync.WaitGroup) dir {
 	siteCount, err := ioutil.ReadDir(path)
 	if err != nil {
 		log.Err(err, "Error reading directory", path)
@@ -99,21 +102,26 @@ func loadDir(path string, size *uint64, count *counter) dir {
 	dir := dir{map[string]*file{}, map[string]dir{}}
 
 	for _, site := range siteCount {
-		if site.IsDir() {
-			dr := loadDir(fmt.Sprintf("%s/%s", path, site.Name()), size, count)
-			dir.dirs[site.Name()] = dr
-			log.Debug(fmt.Sprintf("Loaded directory in cache %s/%s", path, site.Name()))
-		} else {
-			tmpSite, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", path, site.Name()))
-			if err != nil {
-				log.Err(err, fmt.Sprintf("Error loading site %s/%s", path, site.Name()))
+		site := site // prevents use uf loop variable
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if site.IsDir() {
+				dr := loadDir(fmt.Sprintf("%s/%s", path, site.Name()), size, count, wg)
+				dir.dirs[site.Name()] = dr
+				log.Debug(fmt.Sprintf("Loaded directory in cache %s/%s", path, site.Name()))
 			} else {
-				file := createFile(tmpSite, site.Name(), count)
-				*size += file.getSize()
-				dir.files[site.Name()] = file
-				log.Debug(fmt.Sprintf("Loaded site %s/%s  Size:%dMB", path, site.Name(), file.getSize()/1048576))
+				tmpSite, err := ioutil.ReadFile(fmt.Sprintf("%s/%s", path, site.Name()))
+				if err != nil {
+					log.Err(err, fmt.Sprintf("Error loading site %s/%s", path, site.Name()))
+				} else {
+					file := createFile(tmpSite, site.Name(), count)
+					*size += file.getSize()
+					dir.files[site.Name()] = file
+					log.Debug(fmt.Sprintf("Loaded site %s/%s  Size:%dMB", path, site.Name(), file.getSize()/1048576))
+				}
 			}
-		}
+		}()
 	}
 	return dir
 }
