@@ -45,11 +45,11 @@ func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*
 	file, ok := dir.files[pathSplit[depth-1]]
 	if !ok {
 		if _, ok := dir.dirs[pathSplit[depth-1]]; ok {
-			// site, code := GetErrorSite(NotFound, host, path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
-			return nil, "", 404, "", errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
+			data, code := GetErrorSite(http.StatusNotFound, host, path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
+			return data, "", code, "text/html", errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
 		}
-		// site, code := GetErrorSite(NotFound, host, path)
-		return nil, "", 404, "", errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
+		data, code := GetErrorSite(http.StatusNotFound, host, path, "")
+		return data, "", code, "text/html", errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
 	}
 	data, encoding := file.data.getSmallest(availableEncodings)
 	return data, encoding, 200, file.mimetype, nil
