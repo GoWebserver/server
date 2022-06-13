@@ -11,12 +11,6 @@ import (
 	"server/src/settings"
 )
 
-type site struct {
-	data     *[]byte
-	encoding Encoding
-	mimetype string
-}
-
 func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, Encoding, int, string, error) {
 	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
 		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {

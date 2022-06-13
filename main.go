@@ -77,6 +77,7 @@ func startWebServer(webServer *http.Server) {
 	}
 }
 
+/*
 func startAPI(api *http.Server) {
 	// blocks if success
 	log.Log(fmt.Sprintf("ListenAndServe API with TLS started on localhost%s", api.Addr))
@@ -87,3 +88,4 @@ func startAPI(api *http.Server) {
 		panic(err)
 	}
 }
+*/

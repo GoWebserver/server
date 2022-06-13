@@ -110,11 +110,6 @@ const (
 	// [Example]
 	LoadEverytime LiveTime = iota
 
-	// LoadAtStartup loads setting on first access or on forced settings reload
-	// Use for Settings that significantly influence the server's behaviour
-	// [Logging]
-	LoadAtStartup
-
 	// LoadAsyncAfterEveryRequest reloads the setting async after every request
 	// use for frequently changing and frequently requested Settings which
 	// must be fast to access

@@ -32,6 +32,7 @@ func LogAccess(code int, duration int, searchDuration int, error error, writeErr
 	log.Debug("LogAccess", uri, code, duration, searchDuration, method, error, writeErr, encoding)
 }
 
+/*
 func LogAPIAccess(duration int, error error, request string) {
 	//language=SQL
 	query := src.Session.Query(
@@ -50,3 +51,4 @@ func LogAPIAccess(duration int, error error, request string) {
 	}
 	log.Debug("LogAPIAccess", duration, error, request)
 }
+*/
