@@ -160,9 +160,9 @@ func LoadDefaultSettings() {
 	}
 	sett.Mimetypes = setting[[]Mime]{
 		defaultData: []Mime{},
-		liveTime:    LoadAsyncAfterXRequests,
-		liveTimeData: LoadAfterXRequestsData{
-			XRequests: 1000,
+		liveTime:    LoadAfterXTime,
+		liveTimeData: LoadAfterXTimeData{
+			XTime: 60 * time.Second,
 		},
 		loadFunc: LoadMimetypes,
 	}
