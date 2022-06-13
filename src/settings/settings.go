@@ -2,6 +2,7 @@ package settings
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"server/src/log"
@@ -87,6 +88,9 @@ type setting[T any] struct {
 	// bool to indicate if this setting was already loaded
 	loaded bool
 
+	// Mutex to indicate if this setting is currently loaded (prevent multiple loadings)
+	loading sync.RWMutex
+
 	// lifetime of this setting
 	liveTime LiveTime
 
@@ -111,18 +115,18 @@ const (
 	// [Logging]
 	LoadAtStartup
 
-	// LoadAfterRequest reloads the setting async after every request
+	// LoadAsyncAfterEveryRequest reloads the setting async after every request
 	// use for frequently changing and frequently requested Settings which
 	// must be fast to access
 	// [IndexPage, server shut down]
-	LoadAfterRequest
+	LoadAsyncAfterEveryRequest
 
-	// LoadAfterXRequests reloads the setting async like LoadAfterRequest, but
+	// LoadAsyncAfterXRequests reloads the setting async like LoadAsyncAfterEveryRequest, but
 	// only after certain count of requests were made.
 	// use for frequently requested Settings which must be fast to access and
 	// only sometimes change
 	// [Mimetypes]
-	LoadAfterXRequests
+	LoadAsyncAfterXRequests
 
 	// LoadAfterXTime reloads the setting op access if X time in ms has passed
 	// since last access
@@ -151,12 +155,12 @@ func GetSettings() *settings {
 func LoadDefaultSettings() {
 	sett.DefaultSite = setting[string]{
 		defaultData: "/index.html",
-		liveTime:    LoadAfterRequest,
+		liveTime:    LoadAsyncAfterEveryRequest,
 		loadFunc:    LoadDefaultSite,
 	}
 	sett.Mimetypes = setting[[]Mime]{
 		defaultData: []Mime{},
-		liveTime:    LoadAfterXRequests,
+		liveTime:    LoadAsyncAfterXRequests,
 		liveTimeData: LoadAfterXRequestsData{
 			XRequests: 1000,
 		},
@@ -164,7 +168,7 @@ func LoadDefaultSettings() {
 	}
 	sett.ServerOff = setting[bool]{
 		defaultData: false,
-		liveTime:    LoadAfterRequest,
+		liveTime:    LoadAsyncAfterEveryRequest,
 		loadFunc:    LoadServerOff,
 	}
 	sett.DeflateCompressMinSize = setting[uint64]{
@@ -242,14 +246,41 @@ func LoadDefaultSettings() {
 }
 
 func (setting *setting[T]) Get() T {
+	// block while loading
+	setting.loading.RLock()
+
+	// only check if loaded after acquiring lock (so if setting was loaded in meantime this doesn't get called again
 	if !setting.loaded {
+		// release read to modify setting
+		setting.loading.RUnlock()
+
+		setting.loading.Lock()
+		defer setting.loading.Unlock()
+
 		err := setting.loadFunc()
 		if err != nil {
 			log.Err(err, fmt.Sprintf("Error loading initial Settings %#v using default data", setting))
 			return setting.defaultData
 		}
 		setting.loaded = true
+
+		// update data
+		switch setting.liveTime {
+		case LoadAsyncAfterXRequests:
+			data := setting.liveTimeData.(LoadAfterXRequestsData)
+			data.countRequests = 0
+			setting.liveTimeData = data
+		case LoadAfterXTime:
+			data := setting.liveTimeData.(LoadAfterXTimeData)
+			data.lastAccess = time.Now()
+			setting.liveTimeData = data
+		}
+		return setting.data
 	}
+
+	defer setting.loading.RUnlock()
+	// release read after call
+
 	err := setting.load()
 	if err != nil {
 		log.Err(err, fmt.Sprintf("Error loading Settings %#v using default data", setting))
@@ -261,31 +292,43 @@ func (setting *setting[T]) Get() T {
 func (setting *setting[T]) load() (err error) {
 	switch setting.liveTime {
 	case LoadEverytime:
+		setting.loading.RLock()
 		err = setting.loadFunc()
-	case LoadAfterRequest:
+		setting.loading.RUnlock()
+	case LoadAsyncAfterEveryRequest:
 		go func() {
+			setting.loading.RLock()
 			err := setting.loadFunc()
 			if err != nil {
-				log.Err(err, fmt.Sprintf("Error loading Settings %#v async", setting))
+				log.Err(err, fmt.Sprintf("Error loading Setting %#v async", setting))
 			}
+			setting.loading.RUnlock()
 		}()
-	case LoadAfterXRequests:
+	case LoadAsyncAfterXRequests:
 		data := setting.liveTimeData.(LoadAfterXRequestsData)
 		data.countRequests++
 		if data.countRequests >= data.XRequests {
-			err = setting.loadFunc()
-			if err == nil {
-				data.countRequests = 0
-			}
+			go func() {
+				setting.loading.RLock()
+				err := setting.loadFunc()
+				if err != nil {
+					log.Err(err, fmt.Sprintf("Error loading Setting %#v async", setting))
+				} else {
+					data.countRequests = 0
+				}
+				setting.loading.RUnlock()
+			}()
 		}
 		setting.liveTimeData = data
 	case LoadAfterXTime:
 		data := setting.liveTimeData.(LoadAfterXTimeData)
 		if time.Since(data.lastAccess) > data.XTime {
+			setting.loading.RLock()
 			err = setting.loadFunc()
 			if err == nil {
 				data.lastAccess = time.Now()
 			}
+			setting.loading.RUnlock()
 		}
 		setting.liveTimeData = data
 	}
