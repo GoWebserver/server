@@ -14,7 +14,7 @@ if __name__ == "__main__":
                 flipped[i.replace("*", ".*", 1) + "$"] = m
         with open("out.sql", "w") as r:
             r.write(f"TRUNCATE {server};\n")
-            r.writelines([f"INSERT INTO {server} (regex, type, \"index\") VALUES ('{ext}', '{typ}', {index});\n" for index, (ext, typ) in enumerate(flipped.items())])
+            r.writelines([f"INSERT INTO {server} (extension, mimetype, \"index\") VALUES ('{ext}', '{typ}', {index});\n" for index, (ext, typ) in enumerate(flipped.items())])
             print("generated SQL")
 
 

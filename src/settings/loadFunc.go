@@ -20,7 +20,7 @@ func LoadMimetypes() error {
 
 	//language=SQL
 	sess := src.Session.Query(
-		"SELECT regex, type, \"index\" FROM server.mime",
+		"SELECT extension, mimetype, \"index\" FROM server.mime",
 	)
 	iter := sess.Iter()
 	sett.Mimetypes.data = make([]Mime, iter.NumRows())
