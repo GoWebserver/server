@@ -256,7 +256,7 @@ func LoadDefaultSettings() {
 		defaultData: []Forbidden{},
 		liveTime:    LoadAfterXTimeAfterAccess,
 		liveTimeData: LoadAfterXTimeData{
-			XTime: 60 * time.Second,
+			XTime: 30 * time.Second,
 		},
 		loadFunc: LoadForbidden,
 	}

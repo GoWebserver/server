@@ -17,24 +17,30 @@ func getSite(request *http.Request, availableEncodings *map[Encoding]bool) (*[]b
 		return data, "", code, "text/html", errors.New(fmt.Sprintf("not get method (%v)", request.Method))
 	}
 
-	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
-		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {
-			site, code := GetErrorSite(Forbidden, host, path)
-			return &site, code, errors.New(path + " Forbidden by Endpoints " + forbidden)
+	for _, forbidden := range settings.GetSettings().Forbidden.Get() {
+		switch forbidden.Type {
+		case settings.FileExtension:
+			if strings.HasSuffix(request.URL.Path, "."+forbidden.Data) {
+				data, code := GetErrorSite(http.StatusForbidden, request.Host, request.URL.Path, "forbidden by FileExtension")
+				return data, "", code, "text/html", errors.New(fmt.Sprintf("forbidden by extension: %s (%s)", forbidden.Data, request.URL.Path))
+			}
+		case settings.AbsoluteFile:
+			if request.URL.Path == forbidden.Data {
+				data, code := GetErrorSite(http.StatusForbidden, request.Host, request.URL.Path, "forbidden by absolute path")
+				return data, "", code, "text/html", errors.New(fmt.Sprintf("forbidden by absolute path: %s", forbidden.Data))
+			}
+		case settings.AbsoluteDirectory:
+			if strings.HasPrefix(request.URL.Path, forbidden.Data) {
+				data, code := GetErrorSite(http.StatusForbidden, request.Host, request.URL.Path, "forbidden by absolute DirPath")
+				return data, "", code, "text/html", errors.New(fmt.Sprintf("forbidden by absolute DirPath: %s (%s)", forbidden.Data, request.URL.Path))
+			}
+		case settings.Regex:
+			if forbidden.Regex.Match([]byte(request.URL.Path)) {
+				data, code := GetErrorSite(http.StatusForbidden, request.Host, request.URL.Path, "forbidden by regex")
+				return data, "", code, "text/html", errors.New(fmt.Sprintf("forbidden by regex: %s (%s)", forbidden.Data, request.URL.Path))
+			}
 		}
 	}
-
-	for _, forbidden := range util.GetConfig().Forbidden.Regex {
-		match, err := regexp.Match(forbidden, []byte(path))
-		if err != nil {
-			// site, code := GetErrorSite(InternalServerError, host, path, fmt.Sprintf("Error checking forbidden regex"))
-			return &site, code, err
-		}
-		if match {
-			// site, code := GetErrorSite(Forbidden, host, path)
-			return &site, code, errors.New(path + " Forbidden by regex " + forbidden)
-		}
-	}*/
 
 	pathSplit := strings.Split(request.URL.Path, "/")[1:]
 

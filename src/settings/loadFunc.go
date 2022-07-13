@@ -351,7 +351,7 @@ func LoadForbidden() error {
 
 	//language=SQL
 	sess := src.Session.Query(
-		"SELECT type, data FROM server. forbidden",
+		"SELECT \"index\", type, data FROM server. forbidden",
 	)
 	iter := sess.Iter()
 	sett.Forbidden.data = make([]Forbidden, iter.NumRows())
@@ -372,7 +372,6 @@ func LoadForbidden() error {
 				Type: ForbiddenType(fmt.Sprintf("%s", row["type"])),
 			}
 		}
-
 	}
 	if err := iter.Close(); err != nil {
 		log.Err(err, "Error loading Forbidden from DB")
