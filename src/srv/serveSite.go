@@ -11,7 +11,12 @@ import (
 	"server/src/settings"
 )
 
-func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*[]byte, Encoding, int, string, error) {
+func getSite(request *http.Request, availableEncodings *map[Encoding]bool) (*[]byte, Encoding, int, string, error) {
+	if request.Method != "GET" {
+		data, code := GetErrorSite(http.StatusMethodNotAllowed, request.Host, request.URL.Path, "")
+		return data, "", code, "text/html", errors.New(fmt.Sprintf("not get method (%v)", request.Method))
+	}
+
 	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
 		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {
 			site, code := GetErrorSite(Forbidden, host, path)
@@ -31,7 +36,7 @@ func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*
 		}
 	}*/
 
-	pathSplit := strings.Split(path, "/")[1:]
+	pathSplit := strings.Split(request.URL.Path, "/")[1:]
 
 	depth := len(pathSplit)
 
@@ -45,10 +50,10 @@ func getSite(path string, host string, availableEncodings *map[Encoding]bool) (*
 	file, ok := dir.files[pathSplit[depth-1]]
 	if !ok {
 		if _, ok := dir.dirs[pathSplit[depth-1]]; ok {
-			data, code := GetErrorSite(http.StatusNotFound, host, path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
+			data, code := GetErrorSite(http.StatusNotFound, request.Host, request.URL.Path, fmt.Sprintf("%s is no file, but a directory", pathSplit[depth-1]))
 			return data, "", code, "text/html", errors.New(fmt.Sprintf("no site data for: %v", pathSplit))
 		}
-		data, code := GetErrorSite(http.StatusNotFound, host, path, "")
+		data, code := GetErrorSite(http.StatusNotFound, request.Host, request.URL.Path, "")
 		return data, "", code, "text/html", errors.New(fmt.Sprintf("no site data for: %s", pathSplit))
 	}
 	data, encoding := file.data.getSmallest(availableEncodings)
@@ -77,7 +82,7 @@ func CreateServe() http.HandlerFunc {
 			availableEncodings[Encoding(strings.TrimSpace(encoding))] = true
 		}
 
-		msg, encoding, code, mime, err := getSite(r.URL.Path, r.Host, &availableEncodings)
+		msg, encoding, code, mime, err := getSite(r, &availableEncodings)
 
 		searchTime := time.Now()
 
