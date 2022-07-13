@@ -1,0 +1,4 @@
+GET https://localhost:8443/api/item
+Accept: application/json
+
+###
