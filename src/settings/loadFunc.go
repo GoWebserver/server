@@ -15,6 +15,26 @@ type Mime struct {
 	Type  string
 }
 
+// Forbidden stores information about a rule to
+// prevent access to a specific route
+//
+// FileExtension, AbsoluteFile and AbsoluteDirectory store
+// their information inside Data, Regex stores inside Regex
+type Forbidden struct {
+	Data  string
+	Regex *regexp.Regexp
+	Type  ForbiddenType
+}
+
+type ForbiddenType string
+
+const (
+	FileExtension     ForbiddenType = "fe"
+	Regex             ForbiddenType = "r"
+	AbsoluteFile      ForbiddenType = "af"
+	AbsoluteDirectory ForbiddenType = "ad"
+)
+
 func LoadMimetypes() error {
 	now := time.Now()
 
@@ -323,5 +343,43 @@ func LoadEnableBrotliCompression() error {
 	sett.EnableBrotliCompression.data = b
 
 	log.Debug("Loaded EnableBrotliCompression in", time.Since(now))
+	return nil
+}
+
+func LoadForbidden() error {
+	now := time.Now()
+
+	//language=SQL
+	sess := src.Session.Query(
+		"SELECT type, data FROM server. forbidden",
+	)
+	iter := sess.Iter()
+	sett.Forbidden.data = make([]Forbidden, iter.NumRows())
+	for {
+		row := make(map[string]any)
+		if !iter.MapScan(row) {
+			break
+		}
+		index, _ := strconv.Atoi(fmt.Sprintf("%d", row["index"]))
+		if row["type"] == Regex {
+			sett.Forbidden.data[index] = Forbidden{
+				Regex: regexp.MustCompile(fmt.Sprintf("%s", row["data"])),
+				Type:  Regex,
+			}
+		} else {
+			sett.Forbidden.data[index] = Forbidden{
+				Data: fmt.Sprintf("%s", row["data"]),
+				Type: ForbiddenType(fmt.Sprintf("%s", row["type"])),
+			}
+		}
+
+	}
+	if err := iter.Close(); err != nil {
+		log.Err(err, "Error loading Forbidden from DB")
+		log.Debug(iter.Warnings())
+		log.Debug(fmt.Sprintf("%s, attempts %d, latency: %dns", sess.String(), sess.Attempts(), sess.Latency()))
+		return err
+	}
+	log.Debug("Loaded Forbidden in", time.Since(now))
 	return nil
 }

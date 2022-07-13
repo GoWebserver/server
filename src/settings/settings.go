@@ -76,6 +76,12 @@ type settings struct {
 	//
 	// default true
 	EnableBrotliCompression setting[bool]
+
+	// List of regexes or strings that prevent
+	// access to certain routs
+	//
+	// default []
+	Forbidden setting[[]Forbidden]
 }
 
 type setting[T any] struct {
@@ -106,8 +112,9 @@ type LiveTime uint8
 const (
 	// LoadEverytime loads setting from DB every time it gets accessed
 	// never use this in anything serve Files related, only for rare requested
-	// Settings where it doesn't matter if it takes ~ms to load
-	// [Example]
+	// Settings where it doesn't matter if it takes ~ms to load and are not
+	// allowed to be out of sync
+	// []
 	LoadEverytime LiveTime = iota
 
 	// LoadAsyncAfterEveryRequest reloads the setting async after every request
@@ -120,15 +127,22 @@ const (
 	// only after certain count of requests were made.
 	// use for frequently requested Settings which must be fast to access and
 	// only sometimes change
-	// [Mimetypes]
+	// []
 	LoadAsyncAfterXRequests
 
-	// LoadAfterXTime reloads the setting op access if X time in ms has passed
+	// LoadAfterXTime reloads the setting on access if X time in ms has passed
 	// since last access
-	// use for settings which get rarely accessed, but if accessed ony times in
+	// use for settings which get rarely accessed, but if accessed many times in
 	// a short timespan
-	// [Compression Info]
+	// [Compression Info, Mimetypes]
 	LoadAfterXTime
+
+	// LoadAfterXTimeAfterAccess reloads the setting after access if X time in ms has passed
+	// since last access
+	// use for settings which get frequently accessed, doesn't change often, is allowed
+	// to be out of date on first request after some time and must be fast to access
+	// [Forbidden]
+	LoadAfterXTimeAfterAccess
 )
 
 type LoadAfterXRequestsData struct {
@@ -238,16 +252,24 @@ func LoadDefaultSettings() {
 		},
 		loadFunc: LoadEnableBrotliCompression,
 	}
+	sett.Forbidden = setting[[]Forbidden]{
+		defaultData: []Forbidden{},
+		liveTime:    LoadAfterXTimeAfterAccess,
+		liveTimeData: LoadAfterXTimeData{
+			XTime: 60 * time.Second,
+		},
+		loadFunc: LoadForbidden,
+	}
 }
 
 func (setting *setting[T]) Get() T {
 	// block while loading
 	setting.loading.RLock()
+	setting.loading.RUnlock()
 
 	// only check if loaded after acquiring lock (so if setting was loaded in meantime this doesn't get called again
 	if !setting.loaded {
 		// release read to modify setting
-		setting.loading.RUnlock()
 
 		setting.loading.Lock()
 		defer setting.loading.Unlock()
@@ -265,15 +287,13 @@ func (setting *setting[T]) Get() T {
 			data := setting.liveTimeData.(LoadAfterXRequestsData)
 			data.countRequests = 0
 			setting.liveTimeData = data
-		case LoadAfterXTime:
+		case LoadAfterXTime, LoadAfterXTimeAfterAccess:
 			data := setting.liveTimeData.(LoadAfterXTimeData)
 			data.lastAccess = time.Now()
 			setting.liveTimeData = data
 		}
 		return setting.data
 	}
-
-	defer setting.loading.RUnlock()
 	// release read after call
 
 	err := setting.load()
@@ -324,6 +344,19 @@ func (setting *setting[T]) load() (err error) {
 				data.lastAccess = time.Now()
 			}
 			setting.loading.RUnlock()
+		}
+		setting.liveTimeData = data
+	case LoadAfterXTimeAfterAccess:
+		data := setting.liveTimeData.(LoadAfterXTimeData)
+		if time.Since(data.lastAccess) > data.XTime {
+			go func() {
+				setting.loading.RLock()
+				err = setting.loadFunc()
+				if err == nil {
+					data.lastAccess = time.Now()
+				}
+				setting.loading.RUnlock()
+			}()
 		}
 		setting.liveTimeData = data
 	}
