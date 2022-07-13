@@ -1,0 +1,4 @@
+GET https://localhost:8443/nonexistent/item
+Accept: text/html
+
+###
