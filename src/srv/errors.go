@@ -16,15 +16,15 @@ func GetErrorSite(error Errors, host string, path string, additional string) (*[
 
 	switch error {
 	case http.StatusForbidden:
-		site = getForbidden(additional)
+		site = "You are not allowed to access this URL."
 	case http.StatusNotFound:
-		site = getNotFound(additional)
+		site = "URL not found on server."
 	case http.StatusMethodNotAllowed:
-		site = getMethodNotAllowed(additional)
+		site = "Method not allowed."
 	case http.StatusInternalServerError:
-		site = getInternalServerError(additional)
+		site = "An error happened while processing your Request."
 	default:
-		site = getErrorNotFound(additional)
+		site = "Error not found"
 	}
 
 	site = fmt.Sprintf(`
@@ -34,74 +34,40 @@ func GetErrorSite(error Errors, host string, path string, additional string) (*[
 		<meta name="viewport" content="width=device-width"/>
 		<title>%d | %s</title>
 	</head>
-	<body style="background:black;color:white">
-		<div style="margin:auto;width:50%%;padding:10px;position:absolute;bottom:50%%;right:50%%;transform:translate(50%%,50%%)">
-			<div style="display:flex;align-items:center;justify-content:space-between;">
+	<body style="background:black;background:linear-gradient(140deg, rgb(7 10 15) 0%%, rgb(0,0,0) 50%%, rgb(7 9 10) 100%%);;color:white">
+		<div style="margin:auto;width:50%%;padding:10px;position:absolute;bottom:50%%;right:50%%;transform:translate(50%%,50%%);overflow:hidden">
+			<div style="display:flex;align-items:center;justify-content:space-between;gap:2em">
 				<h1 style="margin-block:0.2em">%s</h1>
 				<p>Error accessing %s</p>
 			</div>		
-			<div style="display:flex;align-items:center;justify-content:space-between">
-				%s
-				<button style="padding:8px 16px;color:white;border:white 1px solid;background:transparent;cursor:pointer" onclick="location.reload()">Reload</button>
+			<div style="display:flex;align-items:center;justify-content:space-between;gap:2em">
+				<p>%s</p>
+				<p>%s</p>
+				<button style="padding:8px 16px;color:white;border:white 1px solid;background:transparent;cursor:pointer;border-radius:1em" onclick="location.reload()">Reload</button>
 			</div>
-			<img src="https://http.cat/%d" style="width:100%%">
+			<img src="https://http.cat/%d" style="width:80%%;margin-left: 10%%">
 			<hr>
-			<address>GoWebServer at %s running %s on %s</address>
+			<address>GoWebserver at %s running %s on %s</address>
 		</div>
 	</body>
 </html>
-`, error, http.StatusText(int(error)), http.StatusText(int(error)), path, site, int(error), host, runtime.Version(), getOS())
+`, error, http.StatusText(int(error)), http.StatusText(int(error)), path, site, additional, int(error), host, runtime.Version(), getOS())
 
 	ret := []byte(site)
 
 	return &ret, int(error)
 }
 
-func getForbidden(additional string) string {
-	return fmt.Sprintf(`
-<p>You are not allowed to access this site.</p>
-<p>%s</p>
-	`, additional)
-}
-
-func getNotFound(additional string) string {
-	return fmt.Sprintf(`
-<p>Site not found on server.</p>
-<p>%s</p>
-	`, additional)
-}
-
-func getMethodNotAllowed(additional string) string {
-	return fmt.Sprintf(`
-<p>Method not allowed.</p>
-<p>%s</p>
-	`, additional)
-}
-
-func getInternalServerError(additional string) string {
-	return fmt.Sprintf(`
-<p>An error happend while processing your Request</p>
-<p>%s</p>
-	`, additional)
-}
-
-func getErrorNotFound(additional string) string {
-	return fmt.Sprintf(`
-<p>Error not found</p>
-<p>%s</p>
-	`, additional)
-}
-
 func getOS() string {
 	f, err := os.Open("/etc/os-release")
 	if err != nil {
-		return ""
+		return "Not UNIX"
 	}
 	defer f.Close()
 	s := bufio.NewScanner(f)
 	for s.Scan() {
-		if strings.HasPrefix(s.Text(), "NAME") {
-			return strings.TrimPrefix(s.Text(), "NAME=")
+		if strings.HasPrefix(s.Text(), "NAME=") {
+			return strings.TrimSuffix(strings.TrimPrefix(s.Text(), "NAME=\""), "\"")
 		}
 	}
 	return ""
