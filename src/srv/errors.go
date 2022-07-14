@@ -23,6 +23,8 @@ func GetErrorSite(error Errors, host string, path string, additional string) (*[
 		site = "Method not allowed."
 	case http.StatusInternalServerError:
 		site = "An error happened while processing your Request."
+	case http.StatusRequestURITooLong:
+		site = "Request URI exceeds max URI length"
 	default:
 		site = "Error not found"
 	}
@@ -35,9 +37,9 @@ func GetErrorSite(error Errors, host string, path string, additional string) (*[
 		<title>%d | %s</title>
 	</head>
 	<body style="background:black;background:linear-gradient(140deg, rgb(7 10 15) 0%%, rgb(0,0,0) 50%%, rgb(7 9 10) 100%%);;color:white">
-		<div style="margin:auto;width:50%%;padding:10px;position:absolute;bottom:50%%;right:50%%;transform:translate(50%%,50%%);overflow:hidden">
+		<div style="margin:auto;width:50%%;padding:10px;position:absolute;bottom:50%%;right:50%%;transform:translate(50%%,50%%);overflow:hidden;display:flex;flex-direction:column">
 			<div style="display:flex;align-items:center;justify-content:space-between;gap:2em">
-				<h1 style="margin-block:0.2em">%s</h1>
+				<h1 style="margin-block:0.2em;flex-shrink:0">%s</h1>
 				<p>Error accessing %s</p>
 			</div>		
 			<div style="display:flex;align-items:center;justify-content:space-between;gap:2em">
@@ -45,8 +47,8 @@ func GetErrorSite(error Errors, host string, path string, additional string) (*[
 				<p>%s</p>
 				<button style="padding:8px 16px;color:white;border:white 1px solid;background:transparent;cursor:pointer;border-radius:1em" onclick="location.reload()">Reload</button>
 			</div>
-			<img src="https://http.cat/%d" style="width:80%%;margin-left: 10%%">
-			<hr>
+			<img src="https://http.cat/%d" style="align-self:center;max-height:80vh">
+			<hr style="width:100%%">
 			<address>GoWebserver at %s running %s on %s</address>
 		</div>
 	</body>

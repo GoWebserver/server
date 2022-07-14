@@ -82,6 +82,11 @@ type settings struct {
 	//
 	// default []
 	Forbidden setting[[]Forbidden]
+
+	// Maximum length of request URIs
+	//
+	// default: 1000
+	MaxURILength setting[uint16]
 }
 
 type setting[T any] struct {
@@ -123,12 +128,12 @@ const (
 	// [IndexPage, server shut down]
 	LoadAsyncAfterEveryRequest
 
-	// LoadAsyncAfterXRequests reloads the setting async like LoadAsyncAfterEveryRequest, but
+	// LoadAsyncAfterXRequestsAfterRequest reloads the setting async like LoadAsyncAfterEveryRequest, but
 	// only after certain count of requests were made.
 	// use for frequently requested Settings which must be fast to access and
 	// only sometimes change
 	// []
-	LoadAsyncAfterXRequests
+	LoadAsyncAfterXRequestsAfterRequest
 
 	// LoadAfterXTime reloads the setting on access if X time in ms has passed
 	// since last access
@@ -252,6 +257,14 @@ func LoadDefaultSettings() {
 		},
 		loadFunc: LoadEnableBrotliCompression,
 	}
+	sett.MaxURILength = setting[uint16]{
+		defaultData: 1000,
+		liveTime:    LoadAsyncAfterXRequestsAfterRequest,
+		liveTimeData: LoadAfterXRequestsData{
+			XRequests: 100,
+		},
+		loadFunc: LoadMaxURILength,
+	}
 	sett.Forbidden = setting[[]Forbidden]{
 		defaultData: []Forbidden{},
 		liveTime:    LoadAfterXTimeAfterAccess,
@@ -283,7 +296,7 @@ func (setting *setting[T]) Get() T {
 
 		// update data
 		switch setting.liveTime {
-		case LoadAsyncAfterXRequests:
+		case LoadAsyncAfterXRequestsAfterRequest:
 			data := setting.liveTimeData.(LoadAfterXRequestsData)
 			data.countRequests = 0
 			setting.liveTimeData = data
@@ -319,7 +332,7 @@ func (setting *setting[T]) load() (err error) {
 			}
 			setting.loading.RUnlock()
 		}()
-	case LoadAsyncAfterXRequests:
+	case LoadAsyncAfterXRequestsAfterRequest:
 		data := setting.liveTimeData.(LoadAfterXRequestsData)
 		data.countRequests++
 		if data.countRequests >= data.XRequests {
