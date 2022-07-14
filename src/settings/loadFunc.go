@@ -68,7 +68,7 @@ func LoadDefaultSite() error {
 
 func LoadServerOff() error {
 	now := time.Now()
-	name := "ServerOff" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "ServerOff"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -94,7 +94,7 @@ func LoadServerOff() error {
 
 func LoadDeflateCompressMinSize() error {
 	now := time.Now()
-	name := "DeflateCompressMinSize" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "DeflateCompressMinSize"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -120,7 +120,7 @@ func LoadDeflateCompressMinSize() error {
 
 func LoadGZipCompressMinSize() error {
 	now := time.Now()
-	name := "GZipCompressMinSize" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "GZipCompressMinSize"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -146,7 +146,7 @@ func LoadGZipCompressMinSize() error {
 
 func LoadBrotliCompressMinSize() error {
 	now := time.Now()
-	name := "BrotliCompressMinSize" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "BrotliCompressMinSize"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -172,7 +172,7 @@ func LoadBrotliCompressMinSize() error {
 
 func LoadDeflateCompressMinCompression() error {
 	now := time.Now()
-	name := "DeflateCompressMinCompression" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "DeflateCompressMinCompression"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -198,7 +198,7 @@ func LoadDeflateCompressMinCompression() error {
 
 func LoadGZipCompressMinCompression() error {
 	now := time.Now()
-	name := "GZipCompressMinCompression" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "GZipCompressMinCompression"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -224,7 +224,7 @@ func LoadGZipCompressMinCompression() error {
 
 func LoadBrotliCompressMinCompression() error {
 	now := time.Now()
-	name := "BrotliCompressMinCompression" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "BrotliCompressMinCompression"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -250,7 +250,7 @@ func LoadBrotliCompressMinCompression() error {
 
 func LoadEnableDeflateCompression() error {
 	now := time.Now()
-	name := "EnableDeflateCompression" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "EnableDeflateCompression"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -276,7 +276,7 @@ func LoadEnableDeflateCompression() error {
 
 func LoadEnableGZipCompression() error {
 	now := time.Now()
-	name := "EnableGZipCompression" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "EnableGZipCompression"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -302,7 +302,7 @@ func LoadEnableGZipCompression() error {
 
 func LoadEnableBrotliCompression() error {
 	now := time.Now()
-	name := "EnableBrotliCompression" // IDE complains, it thinks "DefaultSite" is an SQL statement
+	name := "EnableBrotliCompression"
 
 	//language=SQL
 	sess := src.Session.Query(
@@ -323,5 +323,31 @@ func LoadEnableBrotliCompression() error {
 	sett.EnableBrotliCompression.data = b
 
 	log.Debug("Loaded EnableBrotliCompression in", time.Since(now))
+	return nil
+}
+
+func LoadMaxURILength() error {
+	now := time.Now()
+	name := "MaxURILength"
+
+	//language=SQL
+	sess := src.Session.Query(
+		"SELECT name, value FROM server.settings WHERE name=?", name,
+	)
+	setting := map[string]any{}
+	err := sess.MapScan(setting)
+	if err != nil {
+		log.Err(err, "Error loading MaxURILength from DB")
+		log.Debug(fmt.Sprintf("%s, attempts %d, latency: %dns", sess.String(), sess.Attempts(), sess.Latency()))
+		return err
+	}
+	b, err := strconv.Atoi(fmt.Sprintf("%s", setting["value"]))
+	if err != nil {
+		log.Err(err, "Invalid Value for MaxURILength")
+		return err
+	}
+	sett.MaxURILength.data = uint16(b)
+
+	log.Debug("Loaded MaxURILength in", time.Since(now))
 	return nil
 }
