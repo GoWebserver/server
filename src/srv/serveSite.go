@@ -16,6 +16,10 @@ func getSite(request *http.Request, availableEncodings *map[Encoding]bool) (*[]b
 		data, code := GetErrorSite(http.StatusMethodNotAllowed, request.Host, request.URL.Path, "")
 		return data, "", code, "text/html", errors.New(fmt.Sprintf("not get method (%v)", request.Method))
 	}
+	if uint16(len(request.URL.String())) > settings.GetSettings().MaxURILength.Get() {
+		data, code := GetErrorSite(http.StatusRequestURITooLong, request.Host, request.URL.Path, "")
+		return data, "", code, "text/html", errors.New(fmt.Sprintf("URI to long (%v)", len(request.URL.String())))
+	}
 
 	/*for _, forbidden := range util.GetConfig().Forbidden.Endpoints {
 		if strings.HasPrefix(path, forbidden+"/") || path == forbidden {
