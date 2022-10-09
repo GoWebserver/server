@@ -2,9 +2,6 @@
 # can be relative to the server main.go
 # or absolute
 #
-# only this directory is served, but no underlying directory
-# get served
-#
 # default: ./site
 SitesDir: './site'
 
