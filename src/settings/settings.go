@@ -276,99 +276,119 @@ func LoadDefaultSettings() {
 }
 
 func (setting *setting[T]) Get() T {
-	// block while loading
+	// block to check if loaded
 	setting.loading.RLock()
-	setting.loading.RUnlock()
 
 	// only check if loaded after acquiring lock (so if setting was loaded in meantime this doesn't get called again
 	if !setting.loaded {
+
 		// release read to modify setting
+		setting.loading.RUnlock()
 
-		setting.loading.Lock()
-		defer setting.loading.Unlock()
+		data, err := func() (T, error) {
+			// lock the setting for writing to load
+			setting.loading.Lock()
+			defer setting.loading.Unlock()
 
-		err := setting.loadFunc()
-		if err != nil {
-			log.Err(err, fmt.Sprintf("Error loading initial Settings %#v using default data", setting))
-			return setting.defaultData
+			// check if setting was already loaded
+			if !setting.loaded {
+				err := setting.loadFunc()
+				if err != nil {
+					log.Err(err, fmt.Sprintf("Error loading initial Settings %#v using default data", setting))
+					return setting.defaultData, nil
+				}
+				setting.loaded = true
+
+				// update data
+				switch setting.liveTime {
+				case LoadAsyncAfterXRequestsAfterRequest:
+					data := setting.liveTimeData.(LoadAfterXRequestsData)
+					data.countRequests = 0
+					setting.liveTimeData = data
+				case LoadAfterXTime, LoadAfterXTimeAfterAccess:
+					data := setting.liveTimeData.(LoadAfterXTimeData)
+					data.lastAccess = time.Now()
+					setting.liveTimeData = data
+				}
+				return setting.data, nil
+			}
+			return setting.data, fmt.Errorf("allready loaded")
+		}()
+		if err == nil {
+			// return loaded data
+			return data
 		}
-		setting.loaded = true
-
-		// update data
-		switch setting.liveTime {
-		case LoadAsyncAfterXRequestsAfterRequest:
-			data := setting.liveTimeData.(LoadAfterXRequestsData)
-			data.countRequests = 0
-			setting.liveTimeData = data
-		case LoadAfterXTime, LoadAfterXTimeAfterAccess:
-			data := setting.liveTimeData.(LoadAfterXTimeData)
-			data.lastAccess = time.Now()
-			setting.liveTimeData = data
-		}
-		return setting.data
+		log.Debug("setting already loaded")
+		// continue with normal function if was already loaded
+	} else {
+		// release read after loaded check
+		setting.loading.RUnlock()
 	}
-	// release read after call
 
 	err := setting.load()
 	if err != nil {
 		log.Err(err, fmt.Sprintf("Error loading Settings %#v using default data", setting))
 		return setting.defaultData
 	}
+
+	// get lock to read data
+	setting.loading.RLock()
+	defer setting.loading.RUnlock()
 	return setting.data
 }
 
 func (setting *setting[T]) load() (err error) {
 	switch setting.liveTime {
 	case LoadEverytime:
-		setting.loading.RLock()
+		setting.loading.Lock()
+		defer setting.loading.Unlock()
 		err = setting.loadFunc()
-		setting.loading.RUnlock()
 	case LoadAsyncAfterEveryRequest:
 		go func() {
-			setting.loading.RLock()
+			setting.loading.Lock()
+			defer setting.loading.Unlock()
 			err := setting.loadFunc()
 			if err != nil {
 				log.Err(err, fmt.Sprintf("Error loading Setting %#v async", setting))
 			}
-			setting.loading.RUnlock()
 		}()
 	case LoadAsyncAfterXRequestsAfterRequest:
 		data := setting.liveTimeData.(LoadAfterXRequestsData)
 		data.countRequests++
 		if data.countRequests >= data.XRequests {
 			go func() {
-				setting.loading.RLock()
+				setting.loading.Lock()
+				defer setting.loading.Unlock()
 				err := setting.loadFunc()
 				if err != nil {
 					log.Err(err, fmt.Sprintf("Error loading Setting %#v async", setting))
 				} else {
 					data.countRequests = 0
 				}
-				setting.loading.RUnlock()
 			}()
 		}
 		setting.liveTimeData = data
 	case LoadAfterXTime:
 		data := setting.liveTimeData.(LoadAfterXTimeData)
 		if time.Since(data.lastAccess) > data.XTime {
-			setting.loading.RLock()
+			setting.loading.Lock()
+			defer setting.loading.Unlock()
 			err = setting.loadFunc()
 			if err == nil {
 				data.lastAccess = time.Now()
 			}
-			setting.loading.RUnlock()
 		}
 		setting.liveTimeData = data
 	case LoadAfterXTimeAfterAccess:
 		data := setting.liveTimeData.(LoadAfterXTimeData)
 		if time.Since(data.lastAccess) > data.XTime {
 			go func() {
-				setting.loading.RLock()
+				setting.loading.Lock()
+				defer setting.loading.Unlock()
 				err = setting.loadFunc()
 				if err == nil {
 					data.lastAccess = time.Now()
 				}
-				setting.loading.RUnlock()
 			}()
 		}
 		setting.liveTimeData = data
