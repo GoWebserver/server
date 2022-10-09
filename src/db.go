@@ -10,6 +10,7 @@ import (
 var cluster *gocql.ClusterConfig
 
 // var GQLSession gocqlx.Session
+
 var Session *gocql.Session
 
 // DBInit Create and open DB Connection
