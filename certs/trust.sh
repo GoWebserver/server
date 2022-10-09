@@ -1,1 +1,1 @@
-doas trust anchor --store cert.pem
+doas trust anchor --store cert.crt

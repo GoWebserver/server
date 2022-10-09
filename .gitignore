@@ -3,3 +3,5 @@
 
 /certs/cert.crt
 /certs/key.key
+
+/site/*

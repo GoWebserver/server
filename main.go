@@ -1,14 +1,10 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
-	lg "log"
-	"net/http"
 	"sync"
 
-	// graph "server/graphql"
-	// gen "server/graphql/generated"
+	"github.com/lucas-clemente/quic-go/http3"
 
 	"server/src/config"
 	"server/src/log"
@@ -31,28 +27,16 @@ func main() {
 
 	serv := srv.CreateServe()
 
+	webServer3 := &http3.Server{
+		Addr:    "localhost:" + fmt.Sprintf("%d", config.GetConfig().Port),
+		Handler: serv,
+	}
+
 	wg := sync.WaitGroup{}
+
 	wg.Add(1)
-
-	crt, err := tls.LoadX509KeyPair(config.CertsFile, config.KeyFile)
-	if err != nil {
-		panic(err)
-	}
-
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{crt},
-		// ClientAuth:   tls.RequireAndVerifyClientCert,
-	}
-
-	webServer := &http.Server{
-		Addr:      ":" + fmt.Sprintf("%d", config.GetConfig().Port),
-		Handler:   serv,
-		TLSConfig: tlsConfig,
-		ErrorLog:  lg.New(&log.LogWriter{}, "", 0),
-	}
-
 	go func() {
-		startWebServer(webServer)
+		startWebServer(webServer3)
 		wg.Done()
 	}()
 
@@ -66,10 +50,11 @@ func main() {
 	wg.Wait()
 }
 
-func startWebServer(webServer *http.Server) {
+func startWebServer(webServer *http3.Server) {
 	// blocks if success
-	log.Log(fmt.Sprintf("ListenAndServe Webserver with TLS started on https://localhost%s", webServer.Addr))
-	err := webServer.ListenAndServeTLS("", "") // files get ignored, already provided via tlsConfig
+	log.Log(fmt.Sprintf("ListenAndServe Webserver HTTP/3 with TLS started on https://%s", webServer.Addr))
+	// err := webServer.ListenAndServeTLS(config.CertsFile, config.KeyFile)
+	err := http3.ListenAndServe(webServer.Addr, config.CertsFile, config.KeyFile, webServer.Handler)
 
 	if err != nil {
 		log.Err(err, "Error starting webServer")
