@@ -45,14 +45,14 @@ func LoadMimetypes() error {
 	iter := sess.Iter()
 	sett.Mimetypes.data = make([]Mime, iter.NumRows())
 	for {
-		row := make(map[string]any)
+		row := map[string]any{}
 		if !iter.MapScan(row) {
 			break
 		}
 		index, _ := strconv.Atoi(fmt.Sprintf("%d", row["index"]))
 		sett.Mimetypes.data[index] = Mime{
-			Regex: regexp.MustCompile(fmt.Sprintf("%s", row["regex"])),
-			Type:  fmt.Sprintf("%s", row["type"]),
+			Regex: regexp.MustCompile(fmt.Sprintf("%s", row["extension"])),
+			Type:  fmt.Sprintf("%s", row["mimetype"]),
 		}
 	}
 	if err := iter.Close(); err != nil {
