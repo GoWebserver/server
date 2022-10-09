@@ -74,13 +74,24 @@ func getSite(request *http.Request, availableEncodings *map[Encoding]bool) (*[]b
 	return data, encoding, 200, file.mimetype, nil
 }
 
-// CreateServe
-//
-// Registers a handle for '/' to serve the DefaultSite
-func CreateServe() http.HandlerFunc {
+func CreateServe(loading *bool) http.HandlerFunc {
 	fun := func(w http.ResponseWriter, r *http.Request) {
+		if *loading {
+			data := GetLoadingSite(r.Host, r.URL.Path)
+
+			w.WriteHeader(http.StatusTeapot)
+			w.Header().Set("Content-Type", "text/html")
+			_, er := w.Write(*data)
+			if er != nil {
+				log.Err(er, "Error writing response:")
+			}
+
+			return
+		}
+
 		if settings.GetSettings().ServerOff.Get() {
 			w.WriteHeader(http.StatusGone)
+			return
 		}
 		start := time.Now()
 		if r.URL.Path == "/" {
@@ -96,9 +107,9 @@ func CreateServe() http.HandlerFunc {
 			availableEncodings[Encoding(strings.TrimSpace(encoding))] = true
 		}
 
-		msg, encoding, code, mime, err := getSite(r, &availableEncodings)
-
+		// get actual site
 		searchTime := time.Now()
+		msg, encoding, code, mime, err := getSite(r, &availableEncodings)
 
 		if err != nil {
 			log.Err(err, fmt.Sprintf("Error getting site %s", r.URL.Path))

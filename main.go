@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/lucas-clemente/quic-go/http3"
@@ -14,6 +15,8 @@ import (
 	"server/src"
 )
 
+var loading = true
+
 func main() {
 	config.LoadConfig()
 	log.Log("Loaded config:", fmt.Sprintf("%+v", config.GetConfig()))
@@ -23,20 +26,19 @@ func main() {
 	log.Log("Starting server")
 	src.DBInit()
 
-	srv.LoadSites()
+	go func() {
+		loading = true
+		srv.LoadSites()
+		loading = false
+	}()
 
-	serv := srv.CreateServe()
-
-	webServer3 := &http3.Server{
-		Addr:    "localhost:" + fmt.Sprintf("%d", config.GetConfig().Port),
-		Handler: serv,
-	}
+	serv := srv.CreateServe(&loading)
 
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
 	go func() {
-		startWebServer(webServer3)
+		startWebServer("localhost:"+fmt.Sprintf("%d", config.GetConfig().Port), serv)
 		wg.Done()
 	}()
 
@@ -50,11 +52,10 @@ func main() {
 	wg.Wait()
 }
 
-func startWebServer(webServer *http3.Server) {
+func startWebServer(addr string, handler http.Handler) {
 	// blocks if success
-	log.Log(fmt.Sprintf("ListenAndServe Webserver HTTP/3 with TLS started on https://%s", webServer.Addr))
-	// err := webServer.ListenAndServeTLS(config.CertsFile, config.KeyFile)
-	err := http3.ListenAndServe(webServer.Addr, config.CertsFile, config.KeyFile, webServer.Handler)
+	log.Log(fmt.Sprintf("ListenAndServe Webserver HTTP/3 with TLS started on https://%s", addr))
+	err := http3.ListenAndServe(addr, config.CertsFile, config.KeyFile, handler)
 
 	if err != nil {
 		log.Err(err, "Error starting webServer")
